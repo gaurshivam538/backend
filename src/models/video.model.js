@@ -1,6 +1,8 @@
 
 import mongoose, { Schema } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+import { type } from "os";
+import { format } from "path/posix";
 const videoSchema = Schema(
     {
         videoFile: {
@@ -29,18 +31,27 @@ const videoSchema = Schema(
             required: true
         },
         views: {
-            type:Number,
+            type: Number,
             default: 0
         },
         likes: {
-            type:Number,
-            default:0
+            type: Number,
+            default: 0
         },
-        
         isPublished: {
-            type:Boolean,
-            default:true
+            type: Boolean,
+            default: true
         },
+        category: {
+            type: String,
+            enum: ["video", "short"],
+            default: "video"
+        },
+        format: {
+            type: String,
+            enum: ["mp4", "webm", "mov"],
+            required:true,
+        }
 
     },
     { timestamps: true }

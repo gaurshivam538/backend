@@ -90,7 +90,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const publishVideo = asyncHandler(async (req, res) => {
     try {
-        const { title, description } = req.body;
+        const { title, description, category } = req.body;
 
         if (!title || !description) {
             throw new ApiError(401, "Title and description is required")
@@ -118,6 +118,8 @@ const publishVideo = asyncHandler(async (req, res) => {
             description: description,
             duration: videoCloud.duration,
             isPublished: true,
+            format: videoCloud.format,
+            category: category,
 
         })
 
