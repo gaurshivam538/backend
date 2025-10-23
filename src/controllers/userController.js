@@ -44,8 +44,8 @@ const registerUser = asyncHandler(async (req, res) => {
         }
         console.log(req.files)
     
-        const avatarLocalPath = req.files?.avatar[0]?.path;
-        const coverImageLocalPath = req.files?.coverImage[0]?.path;
+        const avatarLocalPath = req.files?.avatar?.[0]?.path;
+        const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
     
         if (!avatarLocalPath) {
             throw new ApiError(400, "avatar file is required")
@@ -79,7 +79,7 @@ const registerUser = asyncHandler(async (req, res) => {
             new ApiResponse(200, createdUser, "user registered Successfully")
         )
     } catch (error) {
-        throw new ApiError(500, error?.meessage)
+        throw new ApiError(500, error?.message,"user is not registered")
     }
 
 })
