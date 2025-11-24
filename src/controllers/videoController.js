@@ -17,6 +17,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         userId
     } = req.query;
 
+    
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 

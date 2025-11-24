@@ -109,7 +109,6 @@ const loginUser = asyncHandler(async (req, res) => {
     // 5. Send coookie
 
     const { email, password, username } = req.body;
-    console.log(email)
 
     if (!email && !username) {
         throw new ApiError(400, "Username of email is required")
@@ -136,7 +135,7 @@ const loginUser = asyncHandler(async (req, res) => {
     const options =
     {
         httpOnly: true,
-        secure: true
+        secure: false
     }
 
     res
