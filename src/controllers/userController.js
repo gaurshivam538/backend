@@ -23,41 +23,41 @@ const registerUser = asyncHandler(async (req, res) => {
 
     try {
         const { username, email, password, fullName } = req.body
-    
+
         //   if(fullName === ""){
         //       throw new ApiError(400, "fullname id required")
         //   }
-    
+
         if (
             [fullName, username, email, password].some((field) =>
                 field?.trim() === "")
         ) {
             throw new ApiError(400, "All fields are required")
         }
-    
+
         const existedUser = await User.findOne({
             $or: [{ username }, { email }]
         })
-    
+
         if (existedUser) {
             throw new ApiError(409, "User with email or username is already exist")
         }
         console.log(req.files)
-    
+
         const avatarLocalPath = req.files?.avatar?.[0]?.path;
         const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
-    
+
         if (!avatarLocalPath) {
             throw new ApiError(400, "avatar file is required")
         }
-    
+
         const avatar = await uploadOnCloudinary(avatarLocalPath);
         const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-    
+
         if (!avatar) {
             throw new ApiError(400, "Avatar file is required")
         }
-    
+
         const user = await User.create({
             fullName,
             avatar: avatar.url,
@@ -66,20 +66,20 @@ const registerUser = asyncHandler(async (req, res) => {
             password,
             username: username.toLowerCase()
         })
-    
+
         const createdUser = await User.findById(user._id).select(
             "-password -refreshToken"
         )
-    
+
         if (!createdUser) {
             throw new ApiError(500, "Something went wrong registring the user")
         }
-    
+
         return res.status(201).json(
             new ApiResponse(200, createdUser, "user registered Successfully")
         )
     } catch (error) {
-        throw new ApiError(500, error?.message,"user is not registered")
+        throw new ApiError(500, error?.message, "user is not registered")
     }
 
 })
@@ -229,8 +229,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", refreshToken, options)
             .json(
-               
-                new ApiResponse(201, {accessToken, refreshToken}, true, "Access Token is created SuccessFully")
+
+                new ApiResponse(201, { accessToken, refreshToken }, true, "Access Token is created SuccessFully")
             )
     } catch (error) {
         throw new ApiError(401, error?.message, "After Expire the AccessToken in not generate again")
@@ -270,8 +270,8 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
         user.password = newPassword;
 
-         await user.save({ validateBeforeSave: false })
-         const afterchangingthePassword =await User.findById(user._id).select("-password -refreshToken")
+        await user.save({ validateBeforeSave: false })
+        const afterchangingthePassword = await User.findById(user._id).select("-password -refreshToken")
 
         return res
             .status(200)
@@ -469,7 +469,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(
-            new ApiResponse(200, channel[0], true,"User profile is fetched Successfully")
+            new ApiResponse(200, channel[0], true, "User profile is fetched Successfully")
         )
 
 })
@@ -520,11 +520,11 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(
-            new ApiResponse(200,  user[0].watchHistory,true, "Watch hitory fetched successfully")
+            new ApiResponse(200, user[0].watchHistory, true, "Watch hitory fetched successfully")
         )
 })
 
-const otpCache = new NodeCache({stdTTL: 300})
+const otpCache = new NodeCache({ stdTTL: 300 })
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -534,36 +534,36 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const forgotPassword = asyncHandler( async(req, res) => {
+const forgotPassword = asyncHandler(async (req, res) => {
 
-  try {
-      const {email} = req.body;
-  
-      const otp = Math.floor(100000+ Math.random()*900000);
-  
-      otpCache.set(email, otp);
-  
-      await  transporter.sendMail({
-          from: process.env.USER_EMAIL,
-          to: email,
-          subject: "Your OTP for Pasword Reset",
-          text: `Your OTP is ${otp}. It expired in 5 minutes`
-      })
-  
-      return res
-      .status(200)
-      .json(
-        new ApiResponse(200, true, "Otp is successflly send to the user email,")
-      )
-  
-  } catch (error) {
-    throw new ApiError(500, error?.message, "forgot-paswword request can not be send")
-  }
+    try {
+        const { email } = req.body;
+
+        const otp = Math.floor(100000 + Math.random() * 900000);
+
+        otpCache.set(email, otp);
+
+        await transporter.sendMail({
+            from: process.env.USER_EMAIL,
+            to: email,
+            subject: "Your OTP for Pasword Reset",
+            text: `Your OTP is ${otp}. It expired in 5 minutes`
+        })
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(200, true, "Otp is successflly send to the user email,")
+            )
+
+    } catch (error) {
+        throw new ApiError(500, error?.message, "forgot-paswword request can not be send")
+    }
 })
 
 
-const verifyOtp = asyncHandler( async(req, res) => {
-    const {email, otp} = req.body;
+const verifyOtp = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
 
     const cachedOtp = otpCache.get(email);
     console.log(cachedOtp);
@@ -581,15 +581,15 @@ const verifyOtp = asyncHandler( async(req, res) => {
     otpCache.del(email)
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse
-    )
+        .status(200)
+        .json(
+            new ApiResponse
+        )
 
 })
 
-const updatePassword = asyncHandler(async(req, res, next) => {
-    const {email, password} = req.body;
+const updatePassword = asyncHandler(async (req, res, next) => {
+    const { email, password } = req.body;
 
     if (!email) {
         throw new ApiError(500, "Please Input a valid email")
@@ -610,22 +610,50 @@ const updatePassword = asyncHandler(async(req, res, next) => {
     //     }
     // )
 
-     user.password = password;
+    user.password = password;
 
-     const updatedUser = await user.save({ validateBeforeSave: false });
+    const updatedUser = await user.save({ validateBeforeSave: false });
     // loginUser(email, password)
 
 
-     return res
-     .status(200)
-     .json(
-        new ApiResponse(
-            200,
-            updatedUser,
-            true,
-            "Password is successfully updated and user is successfully loggedIn"
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                updatedUser,
+                true,
+                "Password is successfully updated and user is successfully loggedIn"
+            )
         )
-     )
+})
+const userProfileImage = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        throw new ApiError(404, "User Info can not provide")
+    }
+
+
+    const userImage = user.avatar;
+    
+    if (!userImage) {
+        throw new ApiError(401, "User Image can not provide");
+    }
+    console.log(userImage);
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                userImage,
+                true,
+                "Image is successfully provided"
+
+            )
+        )
+
 })
 
 
@@ -643,6 +671,7 @@ export {
     getWatchHistory,
     forgotPassword,
     verifyOtp,
-    updatePassword
+    updatePassword,
+    userProfileImage
 
 }
