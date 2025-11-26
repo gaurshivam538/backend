@@ -66,6 +66,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         {
             $project: {
                 title: 1,
+                videoFile: 1,
                 description: 1,
                 thumbnail: 1,
                 views: 1,

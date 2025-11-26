@@ -12,10 +12,11 @@ import { jwtVerifyJWT } from "../middlewares/auth.middleware.js"
 import { upload } from "../middlewares/multer.middleware.js"
 
 const router = Router()
-
 router.use(jwtVerifyJWT)
+
 router.route("/get-all-files")
     .get(getAllVideos)
+
 router.route("/upload-file")
     .post(
         upload.fields([
@@ -27,7 +28,7 @@ router.route("/upload-file")
                 name: "thumbnail",
                 maxCount: 1,
             }
-        ]), publishVideo
+        ]),jwtVerifyJWT, publishVideo
     )
 router.route("/get-specific-video/:videoId")
     .get(getVideoById)
