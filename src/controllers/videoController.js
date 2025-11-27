@@ -73,6 +73,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 createdAt: 1,
                 duration: 1,
                 owner: 1,
+                category:1,
             },
         },
     ]);
