@@ -11,7 +11,7 @@ const videoSchema = Schema(
         },
         thumbnail: {
             type: String, //cloudinary url
-            required: true
+            // required: true
         },
         owner: {
             type: Schema.Types.ObjectId,

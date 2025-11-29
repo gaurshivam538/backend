@@ -93,10 +93,14 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const publishVideo = asyncHandler(async (req, res) => {
     try {
-        const { title, description, category } = req.body;
+        const { title, description, category, isPublished } = req.body;
 
-        if (!title || !description) {
+        if (!title || !description ) {
             throw new ApiError(401, "Title and description is required")
+        }
+        
+        if (isPublished == "") {
+            throw new ApiError(401, "IsPublished is required")
         }
 
         const videoLocalPath = req.files?.videoFile[0]?.path;
@@ -109,13 +113,13 @@ const publishVideo = asyncHandler(async (req, res) => {
             throw new ApiError(401, "Video file is required")
         }
 
-        if (!thumbnailLocalPath) {
-            throw new ApiError(401, "Thumbnail file is required")
-        }
+        // if (!thumbnailLocalPath) {
+        //     throw new ApiError(401, "Thumbnail file is required")
+        // }
 
         const video = await Video.create({
             videoFile: videoCloud.url,
-            thumbnail: thumbnaiCloud.url,
+            thumbnail: thumbnaiCloud?.url || "",
             owner: req.user._id,
             title: title,
             description: description,
