@@ -401,6 +401,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params;
+    console.log(username);
 
     if (!username.trim()) {
         throw new ApiError(401, "username is missing");
@@ -429,12 +430,36 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             }
         },
         {
+            $lookup: {
+                from: "videos",
+                localField: "_id",
+                foreignField: "owner",
+                as: "vc",
+                pipeline: [
+                    {
+                        $project: {
+                            views: 1,
+                            createdAt:1,
+                            title:1,
+                            category:1,
+                            videoFile:1,
+                            thumbnail:1,
+                        },
+                    },
+                ]
+
+            }
+        },
+        {
             $addFields: {
                 subscribersCount: {
                     $size: "$subscribers"
                 },
                 channelsSubscribedToCount: {
                     $size: "$subscribedTo"
+                },
+                videoCount: {
+                    $size: "$vc"
                 },
                 isSubscribed: {
                     $cond: {
@@ -457,6 +482,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 subscribersCount: 1,
                 channelsSubscribedToCount: 1,
                 isSubscribed: 1,
+                videoCount:1,
+                vc:1,
+                
 
             }
         }
@@ -475,6 +503,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 })
 
 const getWatchHistory = asyncHandler(async (req, res) => {
+
     const user = await User.aggregate([
         {
             $match: {
@@ -635,25 +664,27 @@ const userProfileImage = asyncHandler(async (req, res) => {
     }
 
 
-    const userImage = user.avatar;
-    
-    if (!userImage) {
+    const data = {
+        userImage: user.avatar,
+        username: user.username,
+        userFullname: user.fullName,
+
+    };
+    if (!user.avatar) {
         throw new ApiError(401, "User Image can not provide");
     }
-    console.log(userImage);
 
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                userImage,
+                data,
                 true,
                 "Image is successfully provided"
 
             )
         )
-
 })
 
 
