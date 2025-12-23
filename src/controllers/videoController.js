@@ -108,7 +108,9 @@ const publishVideo = asyncHandler(async (req, res) => {
 
         const videoCloud = await uploadOnCloudinary(videoLocalPath);
         const thumbnaiCloud = await uploadOnCloudinary(thumbnailLocalPath);
-
+        
+        console.log("video playpackurl is",videoCloud.playback_url);
+        
         if (!videoCloud) {
             throw new ApiError(401, "Video file is required")
         }
@@ -118,7 +120,7 @@ const publishVideo = asyncHandler(async (req, res) => {
         // }
 
         const video = await Video.create({
-            videoFile: videoCloud.url,
+            videoFile: videoCloud.playback_url,
             thumbnail: thumbnaiCloud?.url || "",
             owner: req.user._id,
             title: title,
