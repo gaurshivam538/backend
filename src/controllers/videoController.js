@@ -6,7 +6,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose"
 
-
 const getAllVideos = asyncHandler(async (req, res) => {
     const {
         page = 1,
@@ -17,7 +16,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
         userId
     } = req.query;
 
-    
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
