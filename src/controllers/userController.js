@@ -108,53 +108,57 @@ const loginUser = asyncHandler(async (req, res) => {
     // 5. accessToken and refreshToken create
     // 5. Send coookie
 
-    const { email, password, username } = req.body;
-
-    if (!email && !username) {
-        throw new ApiError(400, "Username of email is required")
-    }
-
-    const user = await User.findOne({
-        $or: [{ email }, { username }]
-    })
-
-    if (!user) {
-        throw new ApiError(404, "User does not exist")
-    }
-
-    const isPasswordValid = await user.isPasswordCorrect(password)
-
-    if (!isPasswordValid) {
-        throw new ApiError(401, "Invalid user crediantiald")
-    }
-
-    const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(user._id)
-
-    const loggedInUser = await User.findById(user._id).select(" -password -refreshToken")
-
-    const options =
-    {
-        httpOnly: true,
-        secure: false
-    }
-
-    res
-        .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        .json(
-            new ApiResponse(
-                200,
-                {
-                    user: loggedInUser,
-                    accessToken,
-                    refreshToken
-                },
-                "User logged in Successfully"
+    try {
+        const { email, password, username } = req.body;
+    
+        if (!email && !username) {
+            throw new ApiError(400, "Username of email is required")
+        }
+    
+        const user = await User.findOne({
+            $or: [{ email }, { username }]
+        })
+    
+        if (!user) {
+            throw new ApiError(404, "User does not exist")
+        }
+    
+        const isPasswordValid = await user.isPasswordCorrect(password)
+    
+        if (!isPasswordValid) {
+            throw new ApiError(401, "Invalid user crediantiald")
+        }
+    
+        const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(user._id)
+    
+        const loggedInUser = await User.findById(user._id).select(" -password -refreshToken")
+    
+        const options =
+        {
+            httpOnly: true,
+            secure: false
+        }
+    
+        res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    {
+                        user: loggedInUser,
+                        accessToken,
+                        refreshToken
+                    },
+                    "User logged in Successfully"
+                )
             )
-        )
-
-
+    
+    
+    } catch (error) {
+        throw new ApiError("401", "request does not passsed", error?.message)
+    }
 })
 
 const logoutUser = asyncHandler(async (req, res, next) => {
