@@ -167,7 +167,6 @@ const logoutUser = asyncHandler(async (req, res, next) => {
     //Delete the refreshToken save for database
     //delete the refresh and access token for the coookies and session
     //and removing the refreshToken for the database again save the data base refreshtoken is undefined
-    console.log(req.user)
 
     await User.findByIdAndUpdate(
         req.user._id,
@@ -183,7 +182,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
 
     const options = {
         httpOnly: true,
-        secure: false,
+        secure: true,
         sameSite:"none"
     }
 
