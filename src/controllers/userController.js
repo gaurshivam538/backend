@@ -110,36 +110,36 @@ const loginUser = asyncHandler(async (req, res) => {
 
     try {
         const { email, password, username } = req.body;
-    
+
         if (!email && !username) {
             throw new ApiError(400, "Username of email is required")
         }
-    
+
         const user = await User.findOne({
             $or: [{ email }, { username }]
         })
-    
+
         if (!user) {
             throw new ApiError(404, "User does not exist")
         }
-    
+
         const isPasswordValid = await user.isPasswordCorrect(password)
-    
+
         if (!isPasswordValid) {
             throw new ApiError(401, "Invalid user crediantiald")
         }
-    
+
         const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(user._id)
-    
+
         const loggedInUser = await User.findById(user._id).select(" -password -refreshToken")
-    
+
         const options =
         {
             httpOnly: true,
-            secure: false,
-            sameSite:"none",
+            secure: false,   // localhost
+            sameSite: "lax"  // SAME SITE via proxy
         }
-    
+
         res
             .status(200)
             .cookie("accessToken", accessToken, options)
@@ -155,8 +155,8 @@ const loginUser = asyncHandler(async (req, res) => {
                     "User logged in Successfully"
                 )
             )
-    
-    
+
+
     } catch (error) {
         throw new ApiError("401", "request does not passsed", error?.message)
     }
@@ -183,7 +183,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
     const options = {
         httpOnly: true,
         secure: false,
-        sameSite:"none"
+        sameSite: "lax"
     }
 
     return res
@@ -445,11 +445,11 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                     {
                         $project: {
                             views: 1,
-                            createdAt:1,
-                            title:1,
-                            category:1,
-                            videoFile:1,
-                            thumbnail:1,
+                            createdAt: 1,
+                            title: 1,
+                            category: 1,
+                            videoFile: 1,
+                            thumbnail: 1,
                         },
                     },
                 ]
@@ -488,9 +488,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 subscribersCount: 1,
                 channelsSubscribedToCount: 1,
                 isSubscribed: 1,
-                videoCount:1,
-                vc:1,
-                
+                videoCount: 1,
+                vc: 1,
+
 
             }
         }
