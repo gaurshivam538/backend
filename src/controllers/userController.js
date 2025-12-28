@@ -149,8 +149,7 @@ const loginUser = asyncHandler(async (req, res) => {
                     200,
                     {
                         user: loggedInUser,
-                        accessToken,
-                        refreshToken
+                        
                     },
                     "User logged in Successfully"
                 )
@@ -407,7 +406,6 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params;
-    console.log(username);
 
     if (!username.trim()) {
         throw new ApiError(401, "username is missing");
