@@ -247,8 +247,15 @@ const getVideoById = asyncHandler(async (req, res) => {
                     ]
                 }
             },
-            {$unwind:"$commentInfo"},
+            { $unwind: "$commentInfo" },//Problem->when the unwind use then the my lookup take the null docement then the unwind destroy the all block drop 
 
+            {
+                $addFields: {
+                    commentInfo: {
+                        $ifNull: ["$commentInfo", []] //check the commentInfo is null and not yadi null ho to replace karo empty array sa
+                    }
+                }
+            },
 
             {
                 $project: {
@@ -261,7 +268,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                     owner: 1,
                     likes: 1,
                     views: 1,
-                    commentInfo:1,
+                    commentInfo: 1,
                     isPublished: 1,
                     createdAt: 1,
                     updatedAt: 1
