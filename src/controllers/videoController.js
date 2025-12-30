@@ -71,7 +71,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 createdAt: 1,
                 duration: 1,
                 owner: 1,
-                category:1,
+                category: 1,
             },
         },
     ]);
@@ -93,10 +93,10 @@ const publishVideo = asyncHandler(async (req, res) => {
     try {
         const { title, description, category, isPublished } = req.body;
 
-        if (!title || !description ) {
+        if (!title || !description) {
             throw new ApiError(401, "Title and description is required")
         }
-        
+
         if (isPublished == "") {
             throw new ApiError(401, "IsPublished is required")
         }
@@ -106,9 +106,9 @@ const publishVideo = asyncHandler(async (req, res) => {
 
         const videoCloud = await uploadOnCloudinary(videoLocalPath);
         const thumbnaiCloud = await uploadOnCloudinary(thumbnailLocalPath);
-        
-        console.log("video playpackurl is",videoCloud.playback_url);
-        
+
+        console.log("video playpackurl is", videoCloud.playback_url);
+
         if (!videoCloud) {
             throw new ApiError(401, "Video file is required")
         }
@@ -154,56 +154,6 @@ const getVideoById = asyncHandler(async (req, res) => {
 
     try {
 
-        // let videoData = await Video.aggregate([
-        //     {
-        //         $match: {
-        //             _id: new mongoose.Types.ObjectId(videoId)
-        //         }
-        //     },
-        //     {
-        //         $lookup: {
-        //             from: "users",
-        //             localField: "owner",
-        //             foreignField: "_id",
-        //             as: "owner",
-        //             pipeline: [
-        //                 {
-        //                     $project: {
-        //                         fullName: 1,
-        //                         username: 1,
-        //                         avatar: 1,
-        //                     }
-        //                 }
-        //             ]
-        //         },
-
-        //     },
-        //     { $unwind: "$owner" },
-
-        //     {
-        //         $project: {
-        //             _id: 1,
-        //             videoFile: 1,
-        //             thumbnail: 1,
-        //             owner: 1,
-        //             title: 1,
-        //             description: 1,
-        //             duration: 1,
-        //             likes: 1,
-        //             views: 1,
-        //             isPublished: 1,
-        //             createdAt: 1,
-        //             updatedAt: 1
-        //         }
-        //     }
-        // ])
-
-
-        // if (!videoData) {
-        //     throw new ApiError(401, "Video Can not be found please choose the right video")
-        // }
-
-        // let video = videoData[0];
         let shouldIncreaseView = false;
 
         if (req.user?._id) {
@@ -259,18 +209,59 @@ const getVideoById = asyncHandler(async (req, res) => {
 
             },
             { $unwind: "$owner" },
+            {
+                $lookup: {
+                    from: "comments",
+                    localField: "_id",
+                    foreignField: "video",
+                    as: "commentInfo",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "userInfo",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            username: 1,
+                                            avatar: 1,
+
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+
+                        { $unwind: "$userInfo" },
+                        {
+                            $project: {
+                                content: 1,
+                                likes: 1,
+                                createdAt: 1,
+                                user: "$userInfo"
+                            }
+                        }
+                    ]
+                }
+            },
+            {$unwind:"$commentInfo"},
+
 
             {
                 $project: {
                     _id: 1,
                     videoFile: 1,
                     thumbnail: 1,
-                    owner: 1,
                     title: 1,
                     description: 1,
                     duration: 1,
+                    owner: 1,
                     likes: 1,
                     views: 1,
+                    commentInfo:1,
                     isPublished: 1,
                     createdAt: 1,
                     updatedAt: 1

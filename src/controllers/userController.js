@@ -227,7 +227,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         const options = {
             httpOnly: true,
             secure: false,
-            sameSite: "none"
+            sameSite: "lax"
         }
         res
             .status(200)
