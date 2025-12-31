@@ -255,12 +255,12 @@ const getVideoById = asyncHandler(async (req, res) => {
                 }
             },
             // { $unwind: "$commentInfo" },//Problem->when the unwind use then the my lookup take the null docement then the unwind destroy the all block drop 
-            {
-                $unwind: {
-                    path: "$commentInfo",
-                    preserveNullAndEmptyArrays: true
-                }
-            },
+            // {
+            //     $unwind: {
+            //         path: "$commentInfo",
+            //         preserveNullAndEmptyArrays: true
+            //     }
+            // },
 
 
             {
