@@ -137,7 +137,7 @@ const loginUser = asyncHandler(async (req, res) => {
         {
             httpOnly: true,
             secure: false,   // localhost
-            sameSite: "lax"  // SAME SITE via proxy
+            // sameSite: "lax"  // SAME SITE via proxy
         }
 
         res
@@ -227,7 +227,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         const options = {
             httpOnly: true,
             secure: false,
-            sameSite: "lax"
+            // sameSite: "lax"
         }
         res
             .status(200)

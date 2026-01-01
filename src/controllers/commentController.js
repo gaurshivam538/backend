@@ -12,7 +12,6 @@ const getVideoComments = asyncHandler(async (req, res) => {
         const limitNum = parseInt(limit);
 
 
-
         const comments = await Comment.aggregate([
             {
                 $match: {
