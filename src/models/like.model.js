@@ -18,6 +18,11 @@ const likeScheam = Schema(
         likedBy: {
             type:Schema.Types.ObjectId,
             ref:"User"
+        },
+        reaction: {
+            type: String,
+            enum: ["like","dislike"],
+            required:true,
         }
 
     },

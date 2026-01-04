@@ -8,72 +8,156 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
 
-const toggleVideoLike = asyncHandler(async (req, res) => {
+const toggleVideoReaction = asyncHandler(async (req, res) => {
   try {
     const { videoId } = req.params;
+    const {userReaction} = req.body;
     const userId = req.user._id;
+    console.log(userReaction);
 
     const video = await Video.findOne({
-      _id: videoId
-    })
+      _id: videoId,
+
+    });
+
 
     if (!video) {
       throw new ApiError(404, "Video can not be found")
     }
 
-    const existingLike = await Like.findOne({
+    const existingReaction = await Like.findOne({
       video: new mongoose.Types.ObjectId(videoId),
       likedBy: new mongoose.Types.ObjectId(userId)
     });
 
+ 
 
-    if (existingLike) {
+//   user clicks same reaction again → remove
+    if (existingReaction && existingReaction.reaction === userReaction) {
 
-      const oldLike = await Like.deleteOne({ _id: existingLike._id });
-      video.likes = Math.max((video.likes - 1), 0)
+      if(existingReaction.reaction =="like"){ 
+        video.likes = Math.max((video.likes - 1), 0);
+        }
 
-      const videodetails = await video.save({ validationBeforeSave: false })
+      if(existingReaction.reaction == "dislike") {
+        video.dislike = Math.max((video.dislike - 1), 0);
+        }
+
+      await Like.deleteOne({
+        _id:existingReaction._id
+      })
+
+      await video.save();
 
       return res.status(200).json(
         new ApiResponse(200,
           {
-            videodetails,
-            oldLike
-
+            userAction:`user is toggle ${userReaction} reaction`,
+           reaction:null
           },
-          true,
-          "Video unliked successfully")
+          
+          )
       );
-    } else {
+     } 
 
-      const newLike = await Like.create({
-        video: new mongoose.Types.ObjectId(videoId),
-        likedBy: new mongoose.Types.ObjectId(userId)
-      });
+//===========User switch next reaction===========//
+     if (existingReaction) {
 
-      video.likes = video.likes + 1;
-      const videodetails = await video.save();
+      const userbeforeReaction = existingReaction.reaction;
 
-      return res.
-        status(200)
-        .json(
-          new ApiResponse(
-            200,
-            {
-              newLike,
-              videodetails
-            },
-            true,
-            "Video liked successfully")
+       if(existingReaction.reaction == "like"){
+        video.likes = Math.max((video.likes - 1), 0)
+      }
 
+       if(existingReaction.dislike == "dislike") {
+        video.dislike = Math.max((video.dislike- 1), 0);
+       }
+       
+       existingReaction.reaction = userReaction;
+       const existReaction = await existingReaction.save();
 
-        );
-    }
+       if(userReaction == "like") video.likes++;
+       if(userReaction == "dislike")video.dislike++;
+
+       await video.save();
+
+       return res.status(200)
+       .json(
+        new ApiResponse(200,
+          {
+            reaction: userReaction,
+            userAction: `user is swithch the reaction ${userbeforeReaction} to ${existingReaction.reaction}`,
+            existReaction
+          }
+        )
+       )
+
+     }
+
+//============First time create==============//
+     const newReaction = await Like.create({
+      video: new mongoose.Types.ObjectId(videoId),
+      likedBy: new mongoose.Types.ObjectId(userId),
+      reaction:userReaction
+     })
+
+     if(userReaction == "like") video.likes++;
+     if(userReaction == "dislike") video.dislike++;
+
+     const videoDetails = await video.save();
+
+     return res.status(201)
+     .json(
+      new ApiResponse(201, {
+        videoDetails,
+        Action: `User ${newReaction.reaction} action is successfully added`,
+        newReaction
+      })
+     )
 
   } catch (error) {
     throw new ApiError(404, error?.message)
   }
 });
+
+
+const getLikeAndDislikeStatus = asyncHandler(async (req, res) =>{
+   try {
+    const {videoId} = req.params;
+    const userId = req.user._id;
+    let reaction = null;
+
+    const existingReaction = await Like.findOne({
+      video: new mongoose.Types.ObjectId(videoId),
+      likedBy: new mongoose.Types.ObjectId(userId),
+    });
+
+    if (!existingReaction) {
+      return res.status(200)
+      .json(
+        new ApiResponse(404,
+          reaction
+        )
+      )
+    }
+
+    if (existingReaction) {
+      reaction = existingReaction.reaction;
+    }
+
+    return res.status(200)
+    .json(
+      new ApiResponse(
+        200,
+        reaction
+      )
+    );
+
+   } catch (error) {
+    throw new ApiError(404, "User status can not be catch for the internal mistake");
+   }
+})
+
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
   try {
@@ -172,9 +256,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     const video = await Video.find(
       {
         _id: { $in: allVideoIds }//dollor in treates
-      }
-    )
-
+      });
     return res
       .status(200)
       .json(
@@ -191,8 +273,9 @@ const getLikedVideos = asyncHandler(async (req, res) => {
 
 
 export {
-  toggleVideoLike,
+  toggleVideoReaction,
   toggleCommentLike,
-  getLikedVideos
+  getLikedVideos,
+  getLikeAndDislikeStatus
 
 }

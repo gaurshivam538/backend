@@ -38,6 +38,10 @@ const videoSchema = Schema(
             type: Number,
             default: 0
         },
+        dislike:{
+            type:Number,
+            default:0,
+        },
         isPublished: {
             type: Boolean,
             default: true
