@@ -43,7 +43,10 @@ const getVideoComments = asyncHandler(async (req, res) => {
                     pipeline: [
                         {
                             $project: {
-                                _id: 1
+                                _id: 1,
+                                fullName: 1,
+                                username: 1,
+                                avatar: 1,
                             }
                         }
                     ]
@@ -104,15 +107,28 @@ const addComment = asyncHandler(async (req, res) => {
             video: videoId,
             owner: req.user?._id
         })
+        // console.log(comment);
 
         if (!comment) {
             throw new ApiError(500, "Something went wrong uploading the comment")
         }
 
+        // const commentInfo = await Comment.aggregate([
+        //     {
+        //         $match: {
+        //             _id: new mongoose.Types.ObjectId(comment._id)
+        //         }
+        //     }
+        // ])
+
+        const populatedComment = await Comment.findById(comment._id)
+            .populate("owner", "username fullName avatar");
+
+
         return res
             .status(200)
             .json(
-                new ApiResponse(201, comment, true, "Comment is successfully uploaded")
+                new ApiResponse(201, populatedComment, true, "Comment is successfully uploaded")
             )
     } catch (error) {
         throw new ApiError(404, error?.message, "Comment can not be uploaded")
