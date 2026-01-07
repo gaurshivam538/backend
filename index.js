@@ -3,12 +3,17 @@ import {app} from './src/app.js'
 import mongoConnect from './src/db/index.js';
 import dotenv from 'dotenv';
 dotenv.config();
+import http from 'http'
+import { initSocket } from './socketserver.js';
 
 const port = process.env.PORT;
+const server = http.createServer(app);
+
+initSocket(server);
 
 mongoConnect()
     .then(() => {
-        app.listen(port, () => {
+        server.listen(port, () => {
             console.log(`App listening on the port http://localhost:${port}`);
         });
     }).catch((err) => {

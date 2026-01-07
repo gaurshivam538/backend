@@ -9,116 +9,107 @@ import { ApiError } from "../utils/ApiError.js";
 
 
 const toggleVideoReaction = asyncHandler(async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const { videoId } = req.params;
-    const {userReaction} = req.body;
-    const userId = req.user._id;
-    console.log(userReaction);
-
-    const video = await Video.findOne({
-      _id: videoId,
-
-    });
-
-
-    if (!video) {
-      throw new ApiError(404, "Video can not be found")
-    }
+    const video = await Video.findById(req.params.videoId).session(session);
+    if (!video) throw new ApiError(404, "Video not found");
 
     const existingReaction = await Like.findOne({
-      video: new mongoose.Types.ObjectId(videoId),
-      likedBy: new mongoose.Types.ObjectId(userId)
-    });
+      video: req.params.videoId,
+      likedBy: req.user._id
+    }).session(session);
 
- 
+    // SAME REACTION → REMOVE
+    if (existingReaction && existingReaction.reaction === req.body.userReaction) {
+      await Like.deleteOne({ _id: existingReaction._id }).session(session);
 
-//   user clicks same reaction again → remove
-    if (existingReaction && existingReaction.reaction === userReaction) {
-
-      if(existingReaction.reaction =="like"){ 
-        video.likes = Math.max((video.likes - 1), 0);
+      await Video.updateOne(
+        { _id: req.params.videoId },
+        {
+          $inc: {
+            likes: req.body.userReaction === "like" ? -1 : 0,
+            dislike: req.body.userReaction === "dislike" ? -1 : 0
+          }
         }
+      ).session(session);
 
-      if(existingReaction.reaction == "dislike") {
-        video.dislike = Math.max((video.dislike - 1), 0);
-        }
-
-      await Like.deleteOne({
-        _id:existingReaction._id
-      })
-
-      await video.save();
-
+      await session.commitTransaction();
       return res.status(200).json(
-        new ApiResponse(200,
-          {
-            userAction:`user is toggle ${userReaction} reaction`,
-           reaction:null
-          },
-          
-          )
-      );
-     } 
+        new ApiResponse(
+          200, 
+          "Reaction Removed"
+        )
+        );
+    }
 
-//===========User switch next reaction===========//
-     if (existingReaction) {
+    // SWITCH REACTION
+    if (existingReaction) {
+      const prev = existingReaction.reaction;
 
-      const userbeforeReaction = existingReaction.reaction;
+      await Like.updateOne(
+        { _id: existingReaction._id },
+        { reaction: req.body.userReaction }
+      ).session(session);
 
-       if(existingReaction.reaction == "like"){
-        video.likes = Math.max((video.likes - 1), 0)
+      let likesInc = 0;
+      let dislikeInc = 0;
+
+      if (prev === "like" && req.body.userReaction === "dislike") {
+        likesInc = -1;
+        dislikeInc = 1;
       }
 
-       if(existingReaction.dislike == "dislike") {
-        video.dislike = Math.max((video.dislike- 1), 0);
-       }
-       
-       existingReaction.reaction = userReaction;
-       const existReaction = await existingReaction.save();
+      if (prev === "dislike" && req.body.userReaction === "like") {
+        likesInc = 1;
+        dislikeInc = -1;
+      }
 
-       if(userReaction == "like") video.likes++;
-       if(userReaction == "dislike")video.dislike++;
+      await Video.updateOne(
+        { _id: req.params.videoId },
+        { $inc: { likes: likesInc, dislike: dislikeInc } }
+      ).session(session);
 
-       await video.save();
+      await session.commitTransaction();
+      return res.status(200).json(
+        new ApiResponse(200, "Reaction Switched")
+       );
+    }
 
-       return res.status(200)
-       .json(
-        new ApiResponse(200,
-          {
-            reaction: userReaction,
-            userAction: `user is swithch the reaction ${userbeforeReaction} to ${existingReaction.reaction}`,
-            existReaction
-          }
-        )
-       )
+    // FIRST TIME REACTION
+    const like = await Like.create(
+      [{
+        video: req.params.videoId,
+        likedBy: req.user._id,
+        reaction: req.body.userReaction
+      }],
+      { session }
+    );
 
-     }
+    await Video.updateOne(
+      { _id: req.params.videoId },
+      {
+        $inc: {
+          likes: req.body.userReaction === "like" ? 1 : 0,
+          dislike: req.body.userReaction === "dislike" ? 1 : 0
+        }
+      }
+    ).session(session);
 
-//============First time create==============//
-     const newReaction = await Like.create({
-      video: new mongoose.Types.ObjectId(videoId),
-      likedBy: new mongoose.Types.ObjectId(userId),
-      reaction:userReaction
-     })
+    await session.commitTransaction();
+    return res.status(200).json(
+      new ApiResponse(201, like, "Reaction Created" )
+    );
 
-     if(userReaction == "like") video.likes++;
-     if(userReaction == "dislike") video.dislike++;
-
-     const videoDetails = await video.save();
-
-     return res.status(201)
-     .json(
-      new ApiResponse(201, {
-        videoDetails,
-        Action: `User ${newReaction.reaction} action is successfully added`,
-        newReaction
-      })
-     )
-
-  } catch (error) {
-    throw new ApiError(404, error?.message)
+  } catch (err) {
+    await session.abortTransaction();
+    throw new ApiError( 404, err, "Video Reaction can not addded");
+  } finally {
+    session.endSession();
   }
 });
+
 
 
 const getLikeAndDislikeStatus = asyncHandler(async (req, res) =>{
@@ -177,11 +168,9 @@ const comment = await Comment.findById(
 
     if (existingComment) {
     console.log(existingComment)
-    console.log("jashaS")
       
     }
    
-
     if (existingComment) {
       await Like.deleteOne(
         {

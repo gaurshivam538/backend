@@ -3,11 +3,12 @@ import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import {getIo} from "../../socketserver.js"
 
 const getVideoComments = asyncHandler(async (req, res) => {
     try {
         const { videoId } = req.params
-        const { page = 1, limit = 10 } = req.query
+        const { page = 1, limit = 100 } = req.query
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
 
@@ -59,6 +60,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
             {
                 $project: {
                     content: 1,
+                    parentComment:1,
                     video: 1,
                     owner: 1,
                 }
@@ -95,8 +97,9 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
 const addComment = asyncHandler(async (req, res) => {
     try {
-        const { content } = req.body;
+        const { content, commentId } = req.body;
         const { videoId } = req.params
+
 
         if (!content) {
             throw new ApiError(401, "Content field is required")
@@ -105,7 +108,8 @@ const addComment = asyncHandler(async (req, res) => {
         const comment = await Comment.create({
             content: content,
             video: videoId,
-            owner: req.user?._id
+            owner: req.user?._id,
+            parentComment: commentId || null
         })
         // console.log(comment);
 
@@ -113,17 +117,12 @@ const addComment = asyncHandler(async (req, res) => {
             throw new ApiError(500, "Something went wrong uploading the comment")
         }
 
-        // const commentInfo = await Comment.aggregate([
-        //     {
-        //         $match: {
-        //             _id: new mongoose.Types.ObjectId(comment._id)
-        //         }
-        //     }
-        // ])
 
         const populatedComment = await Comment.findById(comment._id)
             .populate("owner", "username fullName avatar");
+            const io = getIo();
 
+            io.to(`video_${videoId}`).emit("newComment",populatedComment);
 
         return res
             .status(200)
