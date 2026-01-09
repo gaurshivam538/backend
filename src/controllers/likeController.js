@@ -1,5 +1,5 @@
 
-import mongoose from "mongoose";
+import mongoose, { set } from "mongoose";
 import { Like } from "../models/like.model.js";
 import { Video } from "../models/video.model.js"
 import { Comment } from "../models/comment.model.js"
@@ -18,7 +18,8 @@ const toggleVideoReaction = asyncHandler(async (req, res) => {
 
     const existingReaction = await Like.findOne({
       video: req.params.videoId,
-      likedBy: req.user._id
+      likedBy: req.user._id,
+      comment: {$exists: false } // Isak means -> comment field bilkul present nahi honi chahiye
     }).session(session);
 
     // SAME REACTION → REMOVE
@@ -38,10 +39,10 @@ const toggleVideoReaction = asyncHandler(async (req, res) => {
       await session.commitTransaction();
       return res.status(200).json(
         new ApiResponse(
-          200, 
+          200,
           "Reaction Removed"
         )
-        );
+      );
     }
 
     // SWITCH REACTION
@@ -74,7 +75,7 @@ const toggleVideoReaction = asyncHandler(async (req, res) => {
       await session.commitTransaction();
       return res.status(200).json(
         new ApiResponse(200, "Reaction Switched")
-       );
+      );
     }
 
     // FIRST TIME REACTION
@@ -82,7 +83,7 @@ const toggleVideoReaction = asyncHandler(async (req, res) => {
       [{
         video: req.params.videoId,
         likedBy: req.user._id,
-        reaction: req.body.userReaction
+        reaction: req.body.userReaction,
       }],
       { session }
     );
@@ -99,12 +100,12 @@ const toggleVideoReaction = asyncHandler(async (req, res) => {
 
     await session.commitTransaction();
     return res.status(200).json(
-      new ApiResponse(201, like, "Reaction Created" )
+      new ApiResponse(201, like, "Reaction Created")
     );
 
   } catch (err) {
     await session.abortTransaction();
-    throw new ApiError( 404, err, "Video Reaction can not addded");
+    throw new ApiError(404, err, "Video Reaction can not addded");
   } finally {
     session.endSession();
   }
@@ -112,9 +113,9 @@ const toggleVideoReaction = asyncHandler(async (req, res) => {
 
 
 
-const getLikeAndDislikeStatus = asyncHandler(async (req, res) =>{
-   try {
-    const {videoId} = req.params;
+const getLikeAndDislikeStatus = asyncHandler(async (req, res) => {
+  try {
+    const { videoId } = req.params;
     const userId = req.user._id;
     let reaction = null;
 
@@ -125,11 +126,11 @@ const getLikeAndDislikeStatus = asyncHandler(async (req, res) =>{
 
     if (!existingReaction) {
       return res.status(200)
-      .json(
-        new ApiResponse(404,
-          reaction
+        .json(
+          new ApiResponse(404,
+            reaction
+          )
         )
-      )
     }
 
     if (existingReaction) {
@@ -137,90 +138,212 @@ const getLikeAndDislikeStatus = asyncHandler(async (req, res) =>{
     }
 
     return res.status(200)
-    .json(
-      new ApiResponse(
-        200,
-        reaction
-      )
-    );
+      .json(
+        new ApiResponse(
+          200,
+          reaction
+        )
+      );
 
-   } catch (error) {
+  } catch (error) {
     throw new ApiError(404, "User status can not be catch for the internal mistake");
-   }
+  }
 })
 
 
-const toggleCommentLike = asyncHandler(async (req, res) => {
-  try {
-    const { commentId } = req.params
-    //TODO: toggle like on comment
-const cleanId = commentId.trim();
-  
-const comment = await Comment.findById(
-  cleanId
- );
-   
+const toggleCommentReaction = asyncHandler(async (req, res) => {
 
-    const existingComment = await Like.findOne(
-      { comment: new mongoose.Types.ObjectId(cleanId) ,
-       likedBy: new mongoose.Types.ObjectId(req.user._id) }
-    )
+    const { commentId } = req.params;
+    const { userReaction, videoId } = req.body;
+    const userId = req.user._id;
+    const cleanId = commentId.trim();
 
-    if (existingComment) {
-    console.log(existingComment)
-      
-    }
-   
-    if (existingComment) {
-      await Like.deleteOne(
-        {
-          _id: new mongoose.Types.ObjectId(existingComment._id)
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+
+      const comment = await Comment.findById(
+        cleanId
+      ).session(session);
+
+      if (!comment) {
+        throw new ApiError(404, "Comment can not find");
+      }
+
+      const existingReaction = await Like.findOne({
+        comment: new mongoose.Types.ObjectId(cleanId),
+        likedBy: new mongoose.Types.ObjectId(userId)
+      }).session(session);
+
+      if (existingReaction) {
+        console.log( "ExistingReaction", existingReaction);
+      }
+
+
+      //=========User Click the same reaction ==========//
+      if (existingReaction && existingReaction.reaction === userReaction) {
+
+        await Like.deleteOne({ _id: existingReaction._id }).session(session);
+
+        const updatedComment = await Comment.updateOne(
+          { _id: cleanId},
+          {
+            $inc: {
+              likes: userReaction == "like" ? -1 : 0,
+              dislike: userReaction == "dislike" ? -1 : 0,
+            }
+          }
+        ).session(session);
+      await session.commitTransaction();
+
+        return res.status(200)
+          .json(
+            new ApiResponse(201, updatedComment,`User Remove the ${userReaction} Reaction `)
+          )
+      }
+
+      //============Switch Reaction=============//
+      if (existingReaction) {
+        const prevReaction = existingReaction.reaction;
+
+        await Like.updateOne(
+          { _id: existingReaction._id},
+          {reaction: userReaction}
+        ).session(session);
+
+        let likesInc = 0;
+        let dislikeInc = 0;
+
+        if (prevReaction === "like" && userReaction === "dislike") {
+          likesInc = -1;
+          dislikeInc = 1;
         }
-        
-      )
 
-      comment.likes = Math.max((comment.likes - 1), 0)
-      const commentdetails = await comment.save({ validationBeforeSave: false })
+        if (prevReaction === "dislike" && userReaction === "like") {
+          likesInc = 1;
+          dislikeInc = -1;
+        }
 
-      return res
-        .status(200)
+         const updatedComment = await Comment.updateOne(
+          {_id: cleanId},
+          {
+            $inc: {likes: likesInc,
+               dislike: dislikeInc}
+          }
+        ).session(session)
+
+      await session.commitTransaction();
+
+        return res.status(200)
         .json(
           new ApiResponse(
-            200,
-            {
-              commentdetails
-            },
-            true, "Comment Unliked")
-        )
-    } else {
-      const newLike = await Like.create(
-        { comment: new mongoose.Types.ObjectId(cleanId) ,
-         likedBy: new mongoose.Types.ObjectId(req.user._id) }
-      )
-      comment.likes = comment.likes + 1;
-
-      const commentdetails = await comment.save({ validationBeforeSave: false });
-
-      return res
-        .status(200)
-        .json(
-          new ApiResponse(
-            200,
-            {
-              newLike,
-              commentdetails
-            },
-            "Comment is successfully liked"
+            201, updatedComment, `User switch the ${prevReaction} to ${userReaction}`
           )
         )
+      }
+
+      //==========First time create=========//
+
+      const like = await Like.create(
+        [{
+          video: videoId,
+          comment: commentId,
+          likedBy: req.user._id,
+          reaction: userReaction
+        }],
+        {session}
+      );
+
+      const updatedComment = await Comment.updateOne(
+        {_id: commentId},
+        {
+          $inc: {
+            likes: userReaction === "like" ? 1 : 0,
+            dislike: userReaction === "dislike" ? 1 : 0
+          }
+        }
+      ).session(session);
+
+      await session.commitTransaction();
+
+      return res.status(200)
+      .json(
+        new ApiResponse(
+          201,  updatedComment, `User Successfully created a ${userReaction} reaction...`
+        )
+      )
+
+    } catch (error) {
+      await session.abortTransaction();
+      throw new ApiError(404, "Comment Reaction Can not toggle", error)
+    } finally {
+      session.endSession();
     }
-  } catch (error) {
-    throw new ApiError(
-      500,
-      error?.message,
-      "Comment can not be liked for internal mistake"
-    )
+
+   
+})
+
+const getLikeAndDislikeStatusForComment = asyncHandler(async(req, res) => {
+  const {videoId} = req.params;
+  const userId = req.user._id;
+
+  const comment = await Comment.find({
+    video: new mongoose.Types.ObjectId(videoId),
+  });
+
+  if(!comment) {
+    throw new ApiError(404, "Comment can not fetched")
   }
+
+  const reactions = await Like.find({
+    video: new mongoose.Types.ObjectId(videoId),
+    likedBy: new mongoose.Types.ObjectId(userId),
+    comment: {$exists: true, $ne: null}// comment present ho or null nahi ho
+    
+  }).select("comment reaction");// .select means -> sirf comment field bhejo
+
+
+  if (!reactions) {
+    throw new ApiError(404, "Reaction can not find")
+  }
+
+  // const likedSet = new Set(
+  //   reactions.map((reaction) => reaction.comment.toString()),
+  // )
+
+  // const finalComment = comment.map((c) =>(
+  //   {
+  //     ...c._doc,
+  //     isLiked: likedSet.has(c._id.toString()),// has means -> this return the true of false message 
+  //   }
+  // ))
+
+  const reactionMap = new Map(
+    reactions.map((r) => {
+     return [ 
+      r.comment.toString(),
+      r.reaction
+    ]
+    })
+  )
+  //=========Explanation ====//
+  //.map take this array format [["c1", "like"], ["c2", "dislike"]]  but the new Map transform this key and value format example 
+
+//"c1" => "like" then simple to catching the value 
+//=========End=====//
+
+const finalComment = comment.map((c) => ({
+  ...c._doc,
+  userReaction: reactionMap.get(c._id.toString())|| null,
+}));
+
+return res.status(200)
+.json(
+  new ApiResponse(
+    "200", finalComment, "Comment Reactions Successfully find "
+  )
+);
+
 })
 
 const toggleTweetLike = asyncHandler(async (req, res) => {
@@ -263,8 +386,9 @@ const getLikedVideos = asyncHandler(async (req, res) => {
 
 export {
   toggleVideoReaction,
-  toggleCommentLike,
+ toggleCommentReaction,
   getLikedVideos,
-  getLikeAndDislikeStatus
+  getLikeAndDislikeStatus,
+  getLikeAndDislikeStatusForComment
 
 }

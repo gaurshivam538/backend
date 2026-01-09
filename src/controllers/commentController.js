@@ -63,6 +63,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
                     parentComment:1,
                     video: 1,
                     owner: 1,
+                    likes:1,
                 }
             }
 
