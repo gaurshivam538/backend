@@ -3,7 +3,9 @@ import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {getIo} from "../../socketserver.js"
+import { getIo } from "../../socketserver.js"
+import { Like } from "../models/like.model.js";
+import { Video } from "../models/video.model.js"
 
 const getVideoComments = asyncHandler(async (req, res) => {
     try {
@@ -60,10 +62,11 @@ const getVideoComments = asyncHandler(async (req, res) => {
             {
                 $project: {
                     content: 1,
-                    parentComment:1,
+                    parentComment: 1,
                     video: 1,
                     owner: 1,
-                    likes:1,
+                    likes: 1,
+                    isDeleted: 1,
                 }
             }
 
@@ -121,9 +124,9 @@ const addComment = asyncHandler(async (req, res) => {
 
         const populatedComment = await Comment.findById(comment._id)
             .populate("owner", "username fullName avatar");
-            const io = getIo();
+        const io = getIo();
 
-            io.to(`video_${videoId}`).emit("newComment",populatedComment);
+        io.to(`video_${videoId}`).emit("newComment", populatedComment);
 
         return res
             .status(200)
@@ -171,19 +174,161 @@ const updateComment = asyncHandler(async (req, res) => {
 })
 
 const deleteComment = asyncHandler(async (req, res) => {
-    // TODO: delete a comment
 
     const { commentId } = req.params;
+    const userId = req.user._id;
+    const { videoId } = req.body;
+    const session = await mongoose.startSession();
+    const io = getIo();
+    session.startTransaction();
+    try {
 
-    await Comment.findByIdAndDelete(
-        commentId
-    )
+        if (!mongoose.Types.ObjectId.isValid(commentId)) {
+            throw new ApiError(400, "Invalid comment id");
+        }
 
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, {}, true, "Comment is successfully deleted")
-        )
+        if (!videoId || !commentId) {
+            throw new ApiError(404, "Please Take the commentId and videoId");
+        }
+
+        const com = await Comment.findById(commentId).session(session);
+
+        if (!com) {
+            throw new ApiError(404, "Comment can not find").session(session);
+        }
+
+        const parentComment = await Comment.find({
+            parentComment: new mongoose.Types.ObjectId(commentId)
+        });
+
+
+        const video = await Video.findById(videoId).session(session);
+
+        if (!video) {
+            throw new ApiError(404, "Video can not find").session(session);
+        }
+
+        if (video.owner.toString() === userId.toString()) {
+
+            const comment = await Comment.find(
+                {
+                    $or: [
+                        {
+
+                            _id: new mongoose.Types.ObjectId(commentId),
+                        },
+                        {
+                            parentComment: new mongoose.Types.ObjectId(commentId),
+                        }
+                    ]
+                }
+            ).select("_id").session(session);
+
+            const commentIds = comment.map((r) => r._id);
+
+            await Like.deleteMany(
+                {
+                    comment: { $in: commentIds },//$in synatax behave the ->this reed the commnetIds in one by one and match the comment the commentIds value match then remeove the like 
+                }
+            ).session(session);
+
+            await Comment.deleteMany(
+                {
+                    $or: [
+                        {
+
+                            _id: new mongoose.Types.ObjectId(commentId),
+                        },
+                        {
+                            parentComment: new mongoose.Types.ObjectId(commentId),
+                        }
+                    ]
+                }
+            ).session(session);
+
+            io.to(`video_${videoId}`).emit("hard-delete-comment", commentId);
+
+            await session.commitTransaction();
+
+            return res.status(200)
+                .json(
+                    new ApiResponse(
+                        200,
+                        "Comment and child comments and snd likes and subLikes is successfully delete"
+                    )
+                )
+
+        }
+
+        if (video.owner.toString() !== userId.toString() && parentComment.length > 0) {
+            if (com.owner.toString() !== userId.toString()) {
+                throw new ApiError(403, "You are not allowed to delete this comment");
+            }
+            //403 error means-> the web server understood your request but refused to grant access to the requested page or resource.
+
+            await Like.deleteMany({
+                comment: commentId
+            }).session(session);
+
+            const softDeletedComment = await Comment.findByIdAndUpdate(
+                com._id,
+                {
+                    $set: {
+                        isDeleted: true,
+                        content: "This comment was deleted"
+                    }
+                },
+                { session }
+            )
+
+            io.to(`video_${videoId}`).emit("soft-delete-comment", {
+                commentId: com._id,  // keep this as commentId
+                content: softDeletedComment?.content,
+                isDeleted: softDeletedComment?.isDeleted
+            });
+
+
+            await session.commitTransaction();
+            return res.status(200)
+                .json(
+                    new ApiResponse(
+                        200, softDeletedComment, "Comment is successfully soft deleted"
+                    )
+                )
+        }
+        if (video.owner.toString() !== userId.toString() && parentComment.length === 0) {
+
+            if (com.owner.toString() !== userId.toString()) {
+                throw new ApiError(403, "You are not allowed to delete this comment");
+            }
+
+            await Like.deleteMany({
+                video: new mongoose.Types.ObjectId(videoId),
+                comment: new mongoose.Types.ObjectId(commentId)
+            }).session(session);
+
+            await Comment.findByIdAndDelete({
+                _id: new mongoose.Types.ObjectId(commentId)
+            }).session(session);
+
+            io.to(`video_${videoId}`).emit("hard-delete-comment", commentId);
+            await session.commitTransaction();
+            return res.status(200)
+                .json(
+                    new ApiResponse(
+                        200, "Comment is successfully delete"
+                    )
+                )
+        }
+
+
+    } catch (error) {
+        await session.abortTransaction();
+        throw new ApiError(404, error, "Comment can not delete")
+    } finally {
+        session.endSession();
+    }
+
 })
 
 export {
