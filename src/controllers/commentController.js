@@ -142,10 +142,14 @@ const updateComment = asyncHandler(async (req, res) => {
     // TODO: update a comment
     try {
         const { commentId } = req.params;
-        const { content } = req.body
+        const { content, videoId } = req.body;
 
         if (!content) {
             throw new ApiError(401, "Content is required")
+        }
+
+        if (!commentId && !videoId) {
+            throw new ApiError(401, "Comment Id and Video Id is required for updating the comment")
         }
 
         const comment = await Comment.findByIdAndUpdate(
@@ -154,24 +158,28 @@ const updateComment = asyncHandler(async (req, res) => {
                 $set: {
                     content: content,
                 }
-            }
+            },
+              { new: true }//This take the new updated data without this they can take the old not updated data
         )
 
-        const updatingcommit = await Comment.findById(comment._id)
-
-        if (!comment) {
+         if (!comment) {
             throw new ApiError(500, "Comment can not be find")
         }
+        const io = getIo();
 
+     io.to(`video_${videoId}`).emit("update-comment", {
+        content:comment?.content,
+        commentId:comment._id
+     });
         return res
             .status(200)
             .json(
-                new ApiResponse(200, updatingcommit, true, "Commnet is successfully updated")
+                new ApiResponse(200, comment, true, "Commnet is successfully updated")
             )
     } catch (error) {
         throw new ApiError(404, error?.message, "Comment can not updated")
     }
-})
+});
 
 const deleteComment = asyncHandler(async (req, res) => {
 
