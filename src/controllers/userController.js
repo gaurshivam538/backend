@@ -1,4 +1,5 @@
-
+import { v4 as uuidv4 } from "uuid";
+import axios from "axios"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
@@ -8,6 +9,7 @@ import nodemailer from "nodemailer";
 import NodeCache from "node-cache";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
+import oauth2Client from "../utils/googleConfig.js"
 const registerUser = asyncHandler(async (req, res) => {
     //This is the algorithm ofthe code
     // get user details from frontend
@@ -24,9 +26,7 @@ const registerUser = asyncHandler(async (req, res) => {
     try {
         const { username, email, password, fullName } = req.body
 
-        //   if(fullName === ""){
-        //       throw new ApiError(400, "fullname id required")
-        //   }
+
 
         if (
             [fullName, username, email, password].some((field) =>
@@ -57,6 +57,7 @@ const registerUser = asyncHandler(async (req, res) => {
         if (!avatar) {
             throw new ApiError(400, "Avatar file is required")
         }
+        const userCreatedUsername = `@${username.toLowerCase()}`;
 
         const user = await User.create({
             fullName,
@@ -64,25 +65,95 @@ const registerUser = asyncHandler(async (req, res) => {
             coverImage: coverImage?.url || "",
             email,
             password,
-            username: username.toLowerCase()
+            username: userCreatedUsername,
+            isNormalUser: true
+
         })
 
         const createdUser = await User.findById(user._id).select(
-            "-password -refreshToken"
+            " -refreshToken"
         )
 
         if (!createdUser) {
             throw new ApiError(500, "Something went wrong registring the user")
         }
 
-        return res.status(201).json(
-            new ApiResponse(200, createdUser, "user registered Successfully")
-        )
+        return res.status(200)
+            .json(
+                new ApiResponse(201, createdUser, "user registered Successfully")
+            )
     } catch (error) {
         throw new ApiError(500, error?.message, "user is not registered")
     }
 
 })
+
+const registerUserForGoogle = async (req, res) => {
+    const { code } = req.body;
+
+    if (!code) {
+        throw new ApiError(401, "Code can not provide")
+    }
+
+    try {
+
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        const userInfo = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo",
+            {
+                headers: {
+                    Authorization: `Bearer ${tokens.access_token}`
+
+                },
+            },
+        );
+
+        const { email, name, picture } = userInfo.data;
+        if (!userInfo) {
+            throw new ApiError(401, "UserInfo can not provide");
+        }
+
+        const existingUser = await User.findOne({ email });
+
+        if (existingUser) {
+            return res.status(200)
+                .json(
+                    new ApiResponse(200, "User is allready exist please login and use the available resouces")
+                )
+        }
+
+        if (!existingUser) {
+
+            let tempUsername = name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+            const shortId = uuidv4().slice(0, 6);
+
+            tempUsername = `${tempUsername}_${shortId}`
+
+
+            const user = await User.create({
+                fullName: name,
+                avatar: picture,
+                email: email,
+                coverImage: "",
+                isTemporaryUserName: true,
+                isGoogleUser: true,
+                username: tempUsername
+
+            })
+            return res.status(200)
+                .json(
+                    new ApiResponse(201, user, "Google user is successfully created")
+                )
+
+
+        }
+
+    } catch (error) {
+        console.log(error)
+    }
+}
 
 const generateAccessTokenAndRefresh = async (userId) => {
     try {
@@ -100,6 +171,121 @@ const generateAccessTokenAndRefresh = async (userId) => {
     }
 
 }
+
+const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
+
+    const {email} = req.body;
+
+    if (!email) {
+        throw new ApiError(404, "Email is required")
+    }
+
+    try {
+        
+        const user = await User.findOne({
+            email: email,
+        });
+
+        if (!user) {
+            throw new ApiError(401, "User can not find")
+        }
+
+        if (user.isGoogleUser === false) {
+            throw new ApiError(404, "There is no google account for this email for my history please signup for the google for my platform then login")
+        }
+
+        if (user.isGoogleUser) {
+            
+            const {accessToken, refreshToken} = await generateAccessTokenAndRefresh(user?._id);
+            
+            const loggedInUser = await User.findById(user._id).select(" -refreshToken");
+
+            const options = {
+                httpOnly: true,
+                secure: false,
+            }
+
+            res.status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(
+                new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
+            )
+            
+        }
+
+    } catch (error) {
+        throw new ApiError(404, "User loggedIn Successfully");
+    }
+});
+
+const googleLogin = asyncHandler( async (req, res) => {
+
+    const {code} = req.body;
+
+    if (!code) {
+        throw new ApiError(404, "Code cannot provide")
+    }
+
+    try {
+        
+        const {tokens} = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        const userInfo = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo",
+            {
+                headers: {
+                    Authorization: `Bearer ${tokens.access_token}`
+
+                },
+            },
+        );
+
+        const { email } = userInfo.data;
+
+        if (!email) {
+            throw new ApiError(401, "Email cannot provide please check...")
+        }
+
+        const user = await User.findOne({
+            email: email,
+        });
+
+        if (!user) {
+            throw new ApiError(401, "User can not find")
+        }
+
+        if (user.isGoogleUser === false) {
+            throw new ApiError(404, "There is no google account for this email for my history please signup for the google for my platform then login")
+        }
+
+        if (user.isGoogleUser) {
+            
+            const {accessToken, refreshToken} = await generateAccessTokenAndRefresh(user?._id);
+            
+            const loggedInUser = await User.findById(user._id).select(" -refreshToken");
+
+            const options = {
+                httpOnly: true,
+                secure: false,
+            }
+
+            res.status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(
+                new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
+            )
+            
+        }
+
+
+    } catch (error) {
+        throw new ApiError("401", "request does not passsed", error?.message)
+    }
+});
+
+
 const loginUser = asyncHandler(async (req, res) => {
     // 1. req.body Data
     // 2. username or email check
@@ -149,7 +335,7 @@ const loginUser = asyncHandler(async (req, res) => {
                     200,
                     {
                         user: loggedInUser,
-                        
+
                     },
                     "User logged in Successfully"
                 )
@@ -583,10 +769,12 @@ const forgotPassword = asyncHandler(async (req, res) => {
             text: `Your OTP is ${otp}. It expired in 5 minutes`
         })
 
+        const catchedOtp = otpCache.get(email);
+
         return res
             .status(200)
             .json(
-                new ApiResponse(200, true, "Otp is successflly send to the user email,")
+                new ApiResponse(200, catchedOtp, "Otp is successflly send to the user email,")
             )
 
     } catch (error) {
@@ -707,6 +895,9 @@ export {
     forgotPassword,
     verifyOtp,
     updatePassword,
-    userProfileImage
+    userProfileImage,
+    registerUserForGoogle,
+    afterRedirectForSignupLogin,
+    googleLogin
 
 }

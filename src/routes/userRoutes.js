@@ -1,15 +1,18 @@
 
 import { Router } from "express";
 import {
+  afterRedirectForSignupLogin,
   changeCurrentPassword,
   forgotPassword,
   getCurrentUser,
   getUserChannelProfile,
   getWatchHistory,
+  googleLogin,
   loginUser,
   logoutUser,
   refreshAccessToken,
   registerUser,
+  registerUserForGoogle,
   updateAccoutDetails,
   updateAvatar,
   updateCoverImage,
@@ -35,6 +38,9 @@ router.route("/register").post(
   ]),
   registerUser
 )
+router.route("/google-register").post(registerUserForGoogle)
+router.route("/after-googlesignup-rediretlogin").post(afterRedirectForSignupLogin)
+router.route("/google-login").post(googleLogin)
 router.route("/login").post(loginUser)
 router.route("/forgot-password").post(forgotPassword)
 router.route("/verify-otp").get(verifyOtp)

@@ -43,10 +43,24 @@ const userSchema = new Schema(
         ],
         password: {
             type: String,
-            required: [true, 'Password is Required']
+            required: function () {
+                return !this.isGoogleUser ;
+            }
+        },
+        isGoogleUser: {
+            type: Boolean,
+            default: false
+        },
+        isNormalUser: {
+            type: Boolean,
+            default: false
         },
         refreshToken: {
             type: String,
+        },
+        isTemporaryUserName: {
+            type: Boolean,
+            default: false
         }
 
     },
@@ -87,7 +101,6 @@ userSchema.methods.generateRefreshToken = function () {
         process.env.REFRESH_TOKEN_SECRET,
         {
             expiresIn: process.env.REFRESH_TOKEN_EXPIRY
-
         }
     )
     return refreshToken;

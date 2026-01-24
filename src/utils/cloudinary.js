@@ -14,14 +14,12 @@ cloudinary.config({
 
 
 const uploadOnCloudinary = async (localFilePath) => {
-  console.log(" Local file path received:", localFilePath);
-
-  try {
-    if (!localFilePath) {
+ if (!localFilePath) {
       console.log(" No file path provided for Cloudinary upload.");
       return null;
     }
-
+  try {
+   
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
     });

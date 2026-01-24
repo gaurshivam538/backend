@@ -8,7 +8,6 @@ const __dirname = path.dirname(__filename);
 
 // Go 1 level up (from src/middlewares) → then into public/temp
 const uploadPath = path.join(__dirname, "../../public/temp");
-console.log(uploadPath)
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
