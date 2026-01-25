@@ -43,7 +43,7 @@ router.route("/after-googlesignup-rediretlogin").post(afterRedirectForSignupLogi
 router.route("/google-login").post(googleLogin)
 router.route("/login").post(loginUser)
 router.route("/forgot-password").post(forgotPassword)
-router.route("/verify-otp").get(verifyOtp)
+router.route("/verify-otp").post(verifyOtp)
 router.route("/update-password").patch(updatePassword)
 router.route("/logout").post(jwtVerifyJWT, logoutUser)
 router.route("/refresh-access-token").post(refreshAccessToken)

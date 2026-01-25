@@ -774,7 +774,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
         return res
             .status(200)
             .json(
-                new ApiResponse(200, catchedOtp, "Otp is successflly send to the user email,")
+                new ApiResponse(200, "Otp is successflly send to the user email,")
             )
 
     } catch (error) {
@@ -804,7 +804,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(
-            new ApiResponse
+            new ApiResponse(200, "Otp is successfully verify please set the new password")
         )
 
 })
@@ -819,24 +819,12 @@ const updatePassword = asyncHandler(async (req, res, next) => {
     const user = await User.findOne({
         email: email,
     });
-    // const user2 = await User.findByIdAndUpdate(
-    //     user._id,
-    //     {
-    //         $set: {
-    //             password:password
-    //         }
-    //     },
-    //     {
-    //         new:true
-    //     }
-    // )
+   
 
     user.password = password;
 
-    const updatedUser = await user.save({ validateBeforeSave: false });
-    // loginUser(email, password)
-
-
+    const updatedUser = await user.save();
+  
     return res
         .status(200)
         .json(
