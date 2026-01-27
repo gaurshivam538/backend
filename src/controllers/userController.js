@@ -174,14 +174,14 @@ const generateAccessTokenAndRefresh = async (userId) => {
 
 const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
 
-    const {email} = req.body;
+    const { email } = req.body;
 
     if (!email) {
         throw new ApiError(404, "Email is required")
     }
 
     try {
-        
+
         const user = await User.findOne({
             email: email,
         });
@@ -195,9 +195,9 @@ const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
         }
 
         if (user.isGoogleUser) {
-            
-            const {accessToken, refreshToken} = await generateAccessTokenAndRefresh(user?._id);
-            
+
+            const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(user?._id);
+
             const loggedInUser = await User.findById(user._id).select(" -refreshToken");
 
             const options = {
@@ -206,12 +206,12 @@ const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
             }
 
             res.status(200)
-            .cookie("accessToken", accessToken, options)
-            .cookie("refreshToken", refreshToken, options)
-            .json(
-                new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
-            )
-            
+                .cookie("accessToken", accessToken, options)
+                .cookie("refreshToken", refreshToken, options)
+                .json(
+                    new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
+                )
+
         }
 
     } catch (error) {
@@ -219,17 +219,17 @@ const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
     }
 });
 
-const googleLogin = asyncHandler( async (req, res) => {
+const googleLogin = asyncHandler(async (req, res) => {
 
-    const {code} = req.body;
+    const { code } = req.body;
 
     if (!code) {
         throw new ApiError(404, "Code cannot provide")
     }
 
     try {
-        
-        const {tokens} = await oauth2Client.getToken(code);
+
+        const { tokens } = await oauth2Client.getToken(code);
         oauth2Client.setCredentials(tokens);
 
         const userInfo = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo",
@@ -260,9 +260,9 @@ const googleLogin = asyncHandler( async (req, res) => {
         }
 
         if (user.isGoogleUser) {
-            
-            const {accessToken, refreshToken} = await generateAccessTokenAndRefresh(user?._id);
-            
+
+            const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(user?._id);
+
             const loggedInUser = await User.findById(user._id).select(" -refreshToken");
 
             const options = {
@@ -271,12 +271,12 @@ const googleLogin = asyncHandler( async (req, res) => {
             }
 
             res.status(200)
-            .cookie("accessToken", accessToken, options)
-            .cookie("refreshToken", refreshToken, options)
-            .json(
-                new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
-            )
-            
+                .cookie("accessToken", accessToken, options)
+                .cookie("refreshToken", refreshToken, options)
+                .json(
+                    new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
+                )
+
         }
 
 
@@ -753,10 +753,24 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const forgotPassword = asyncHandler(async (req, res) => {
+const forgotPassword = async (req, res) => {
 
     try {
         const { email } = req.body;
+
+        const user = await User.findOne(
+            {
+                email: email
+            }
+        );
+
+        if (!user) {
+            // throw new ApiError(404, "User not found. Please sign up first.");
+           return res.status(404)
+           .json(
+              new ApiResponse(404,"User not found. Please sign up first." )
+           )
+        }
 
         const otp = Math.floor(100000 + Math.random() * 900000);
 
@@ -769,7 +783,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
             text: `Your OTP is ${otp}. It expired in 5 minutes`
         })
 
-        const catchedOtp = otpCache.get(email);
+
 
         return res
             .status(200)
@@ -780,7 +794,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     } catch (error) {
         throw new ApiError(500, error?.message, "forgot-paswword request can not be send")
     }
-})
+}
 
 
 const verifyOtp = asyncHandler(async (req, res) => {
@@ -800,9 +814,28 @@ const verifyOtp = asyncHandler(async (req, res) => {
     }
 
     otpCache.del(email)
+    const user = await User.findOne({
+        email: email,
+    });
+
+    const token = jwt.sign({
+        _id: user?._id,
+        email: user?.email
+    },
+        process.env.OTP_TOKEN_SECRET,
+        {
+            expiresIn: process.env.OTP_TOKEN_EXPIRY
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: false
+    }
 
     return res
         .status(200)
+        .cookie("otp_token", token, options)
         .json(
             new ApiResponse(200, "Otp is successfully verify please set the new password")
         )
@@ -811,20 +844,26 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
 const updatePassword = asyncHandler(async (req, res, next) => {
     const { email, password } = req.body;
+    const verifyEmail = req.email;
+
 
     if (!email) {
         throw new ApiError(500, "Please Input a valid email")
     };
 
+    if (email !== verifyEmail) {
+        throw new ApiError(401, "Take the correct email for password updating ")
+    };
+
     const user = await User.findOne({
         email: email,
     });
-   
+
 
     user.password = password;
 
     const updatedUser = await user.save();
-  
+
     return res
         .status(200)
         .json(
