@@ -403,12 +403,23 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         const decodedRefreshToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
         if (!decodedRefreshToken) {
-            throw new ApiError(402, "Decoded RefreshToken is not  Provide")
+            throw new ApiError(402, "Refresh Token is Expiry. Please login again and use for this services");
         }
 
-        const user = await User.findById(decodedRefreshToken._id).select(" -password -refreshToken")
+          const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(decodedRefreshToken?._id);
 
-        const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(user._id)
+         await User.findByIdAndUpdate(decodedRefreshToken?._id,
+            {
+                $set: {
+                    refreshToken: refreshToken,
+                }
+            },
+            {
+                new: true,
+            }
+        ).select(" -password -refreshToken");
+
+      
 
         const options = {
             httpOnly: true,
@@ -421,7 +432,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             .cookie("refreshToken", refreshToken, options)
             .json(
 
-                new ApiResponse(201, { accessToken, refreshToken }, true, "Access Token is created SuccessFully")
+                new ApiResponse(201,  true, "Access Token is created SuccessFully")
             )
     } catch (error) {
         throw new ApiError(401, error?.message, "After Expire the AccessToken in not generate again")
@@ -796,7 +807,6 @@ const forgotPassword = async (req, res) => {
     }
 }
 
-
 const verifyOtp = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
 
@@ -905,7 +915,6 @@ const userProfileImage = asyncHandler(async (req, res) => {
             )
         )
 })
-
 
 export {
     registerUser,
