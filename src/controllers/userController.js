@@ -384,7 +384,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
         )
 })
 
-const refreshAccessToken = asyncHandler(async (req, res) => {
+const refreshAccessToken = async (req, res) => {
     // 1. Take the refreshToken for the cookies
     // 2. check refreshtoken is receve or not
     // 3. third verify the refresh token 
@@ -397,13 +397,20 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
         if (!incomingRefreshToken) {
-            throw new ApiError(400, "Not provide the incoming refresh token")
+            return res.status(402)
+            .json(
+                new ApiResponse(402, "Refresh Token can not provide please login")
+            )
+           
         }
 
         const decodedRefreshToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
         if (!decodedRefreshToken) {
-            throw new ApiError(402, "Refresh Token is Expiry. Please login again and use for this services");
+           return res.status(402)
+            .json(
+                new ApiResponse(402, "Refresh Token Expiry please Login and create new token")
+            )
         }
 
           const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(decodedRefreshToken?._id);
@@ -432,12 +439,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             .cookie("refreshToken", refreshToken, options)
             .json(
 
-                new ApiResponse(201,  true, "Access Token is created SuccessFully")
+                new ApiResponse(201,  [], true, "Access Token is created SuccessFully")
             )
     } catch (error) {
         throw new ApiError(401, error?.message, "After Expire the AccessToken in not generate again")
     }
-})
+}
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
     // 1. Take the value of the oldPassword and newPassword for the req.body
