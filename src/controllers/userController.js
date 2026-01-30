@@ -446,6 +446,14 @@ const refreshAccessToken = async (req, res) => {
     }
 }
 
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, req.user, true, "Current user fetched successfully")
+        )
+})
+
 const changeCurrentPassword = asyncHandler(async (req, res) => {
     // 1. Take the value of the oldPassword and newPassword for the req.body
     // 2. check the value of the olPassword and newPassword is provide or not
@@ -491,14 +499,6 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
         throw new ApiError(401, error?.message, "Password is not change")
     }
 
-})
-
-const getCurrentUser = asyncHandler(async (req, res) => {
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, req.user, true, "Current user fetched successfully")
-        )
 })
 
 const updateAccoutDetails = asyncHandler(async (req, res) => {
