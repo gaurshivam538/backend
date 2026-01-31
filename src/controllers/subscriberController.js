@@ -4,7 +4,6 @@ import { ApiError } from "../utils/ApiError.js"
 import { Subscription } from "../models/subscriber.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import mongoose from "mongoose"
-import { subscribe } from "diagnostics_channel"
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
