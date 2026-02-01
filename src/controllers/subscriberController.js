@@ -57,7 +57,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
 // controller to return subscriber list of a channel
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
-    const { channelId } = req.params
+    const { channelId } = req.params;
 
     const subscribers = await Subscription.aggregate([
         {
@@ -81,39 +81,33 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
                         }
                     }
                 ]
-
-            },
-
+            }
         },
         {
             $addFields: {
-                subscriberDetails: {
-                    $ifNull: ["$subscriberDetails", []],
-                }
+                subscriberDetails: { $ifNull: ["$subscriberDetails", []] }
             }
         },
         {
             $project: {
                 _id: 1,
-                subscriberId: "$subscriberDetails._id",
-                fullName: "$subscriberDetails.fullName",
-                username: "$subscriberDetails.username",
-                avatar: "$subscriberDetails.avatar"
+                subscriberId: { $arrayElemAt: ["$subscriberDetails._id", 0] },
+                fullName: { $arrayElemAt: ["$subscriberDetails.fullName", 0] },
+                username: { $arrayElemAt: ["$subscriberDetails.username", 0] },
+                avatar: { $arrayElemAt: ["$subscriberDetails.avatar", 0] }
             }
         }
+    ]);
 
-    ])
-
-    if (!subscribers) {
-        throw new ApiError(401, "No subscriber")
+    if (!subscribers || subscribers.length === 0) {
+        throw new ApiError(404, "No subscribers found");
     }
 
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, subscribers, true, "Fetched Subscribers")
-        )
-})
+    return res.status(200).json(
+        new ApiResponse(200, subscribers, true, "Fetched Subscribers")
+    );
+});
+
 
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
@@ -182,8 +176,8 @@ const subscribedStatus = async (req, res) => {
     }
 
     const existSub = await Subscription.findOne({
-        channelId:channelId,
-        subscriberId: subscriberId
+        channel:channelId,
+        subscriber: subscriberId
     });
 
     return res.status(200)
