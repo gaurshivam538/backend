@@ -4,11 +4,13 @@ import { ApiError } from "../utils/ApiError.js"
 import { Subscription } from "../models/subscriber.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import mongoose from "mongoose"
+import { getIo } from "../../socketserver.js"
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
-    // TODO: toggle subscription
     const subscriberId = req.user?._id
+    const io = getIo();
+
 
 
     //  1. What is isValidObjectId->
@@ -29,16 +31,32 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     )
 
     if (existingSub) {
-        await Subscription.deleteOne({
+        const deleteResult = await Subscription.deleteOne({
             _id: existingSub?._id
         })
+        if (deleteResult.deletedCount != 1) {//deletedCount => mongoDB ka diya hua hai 
+            throw new ApiError("401", "User unsubscribe action fail");
+        }
 
+        io.to(`user_${channelId}`).emit("subscriber:update",
+            {
+                subscriberId,
+                action: "UNSUBSCRIBE"
+
+            }
+        );
+
+        io.to(`user_${subscriberId}`).emit("subscription:update",{
+            channelId,
+            action:"DECREMENT",
+        })
         return res
             .status(200)
             .json(
                 new ApiResponse(200, {}, true, "Unsubscribed Successfully")
             )
-    } else {
+    } 
+  
         const newSubscription = await Subscription.create(
             {
                 subscriber: subscriberId,
@@ -46,12 +64,29 @@ const toggleSubscription = asyncHandler(async (req, res) => {
             }
         )
 
+        if (!newSubscription?._id) {
+            throw new ApiError(404, "User subscriber action can not submitted")
+        }
+
+        io.to(`user_${channelId}`).emit("subscriber:update",
+            {
+                subscriberId,
+                action: "SUBSCRIBE"
+
+            }
+        );
+
+        io.to(`user_${subscriberId}`).emit("subscription:update",{
+            channelId,
+            action:"INCREMENT",
+        });
+
         return res
             .status(200)
             .json(
                 new ApiResponse(201, newSubscription, true, "Subscribed Successfully")
             )
-    }
+    
 
 })
 
