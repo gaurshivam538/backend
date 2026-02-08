@@ -1,3 +1,4 @@
+import { Subscription } from "../models/subscriber.model.js";
 import { Video } from "../models/video.model.js";
 import { View } from "../models/views.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -241,7 +242,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                                 preserveNullAndEmptyArrays: true
                             }
                         },
-                        
+
 
                         {
                             $project: {
@@ -401,11 +402,180 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 
 })
 
+const getVideoBySubscribedChannel = async (req, res) => {
+    const { channelId } = req.params;
+
+    if (!channelId) {
+        throw new ApiError(404, "ChanneId is required!");
+    }
+
+    // const videos = await Subscription.aggregate([
+    //     {
+    //         $match: {
+    //             subscriber: new mongoose.Types.ObjectId(channelId)
+    //         }
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "users",
+    //             localField: "channel",
+    //             foreignField: "_id",
+    //             as: "channelDetails",
+    //             pipeline: [
+    //                 {
+    //                     $lookup: {
+    //                         from: "videos",
+    //                         localField: "_id",
+    //                         foreignField: "owner",
+    //                         as: "VideoInfo",
+    //                         pipeline: [
+    //                             {
+    //                                 $project: {
+    //                                     _id: 1,
+    //                                     videoFile: 1,
+    //                                     thumbnail: 1,
+    //                                     title: 1,
+    //                                     description: 1,
+    //                                     duration: 1,
+    //                                     owner: 1,
+    //                                     likes: 1,
+    //                                     views: 1,
+    //                                     createdAt: 1,
+    //                                 }
+    //                             }
+    //                         ]
+    //                     }
+    //                 },
+    //                 {
+    //                     $addFields: {
+    //                         VideoInfo: {
+    //                             $ifNull: ["$VideoInfo"]
+    //                         }
+    //                     }
+    //                 },
+    //                 {
+    //                     $project: {
+    //                         _id: 1,
+    //                         fullName: 1,
+    //                         username: 1,
+    //                         avatar: 1,
+    //                         videos: "$VideoInfo",
+
+    //                     }
+    //                 }
+    //             ]
+    //         }
+    //     },
+    //     {
+    //         $unwind: {
+    //             path: "$channelDetails",
+    //             preserveNullAndEmptyArrays: true,
+    //         }
+    //     },
+    //     {
+    //         $project: {
+
+    //         }
+    //     }
+
+    // ])
+
+    const videos = await Subscription.aggregate([
+        {
+            $match: {
+                subscriber: new mongoose.Types.ObjectId(channelId),
+            },
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "channel",
+                foreignField: "owner",
+                as: "video",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "user",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        $unwind: "$user",
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            videoFile: 1,
+                            thumbnail: 1,
+                            title: 1,
+                            description: 1,
+                            duration: 1,
+                            owner: 1,
+                            likes: 1,
+                            views: 1,
+                            createdAt: 1,
+                            user: 1,
+                        },
+                    },
+                ],
+            },
+        },
+
+        //  array ko single document me convert
+        {
+            $unwind: "$video",
+        },
+
+        //  sirf video ko root bana diya
+        {
+            $replaceRoot: { newRoot: "$video" },
+        },
+
+        //  latest videos first
+        {
+            $sort: { createdAt: -1 },
+        },
+    ]);
+
+
+    if (videos.length === 0) {
+        return res.status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    "There is no single video is available for the user"
+                )
+            )
+    }
+
+    return res.status(200)
+        .json(
+            new ApiResponse(
+                200,
+                videos,
+                "Video is sucessfully find"
+            )
+        )
+}
+
 export {
     getAllVideos,
     publishVideo,
     getVideoById,
     deleteVideo,
     updateVideo,
-    togglePublishStatus
+    togglePublishStatus,
+    getVideoBySubscribedChannel
 }

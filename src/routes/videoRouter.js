@@ -4,6 +4,7 @@ import {
     deleteVideo,
     getAllVideos,
     getVideoById,
+    getVideoBySubscribedChannel,
     publishVideo,
     togglePublishStatus,
     updateVideo
@@ -37,5 +38,6 @@ router.route("/toggling-status/:videoId")
     .patch(jwtVerifyJWT,togglePublishStatus)
 router.route("/update-video-details/:videoId")
     .patch( jwtVerifyJWT,upload.single("thumbnail"), updateVideo)
+    router.route("/get-subscribed-channel-video/:channelId").get(jwtVerifyJWT, getVideoBySubscribedChannel);
 
 export default router;
