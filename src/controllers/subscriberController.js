@@ -163,10 +163,27 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
                     as: "channelDetails",
                     pipeline: [
                         {
+                            $lookup: {
+                                from: "subscriptions",
+                                localField: "_id",
+                                foreignField: "channel",
+                                as: "subscribers",
+                            }
+                        },
+                        {
+                            $addFields: {
+                                subscribersCount: {
+                                    $size: "$subscribers",
+                                }
+                            }
+                        },
+                        {
                             $project: {
+                                _id:1,
                                 fullName: 1,
                                 username: 1,
                                 avatar: 1,
+                                subscribersCount: 1,
                             }
                         }
                     ]
@@ -178,17 +195,17 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
             },
             {
                 $project: {
-                    _id: 0,
                     channelId: "$channelDetails._id",
                     fullName: "$channelDetails.fullName",
                     username: "$channelDetails.username",
                     avatar: "$channelDetails.avatar",
+                    subscribersCount: "$channelDetails.subscribersCount"
                 }
             }
 
         ])
 
-        if (!userSubscribedChannel) {
+        if (!userSubscribedChannel.length === 0) {
             throw new ApiError(500, "Subscribed  not find")
         }
 
