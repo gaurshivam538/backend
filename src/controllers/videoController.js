@@ -1,6 +1,7 @@
 import { Subscription } from "../models/subscriber.model.js";
 import { Video } from "../models/video.model.js";
 import { View } from "../models/views.model.js";
+import client from "../redis.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -38,6 +39,16 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const sortStage = {
         [sortBy]: sortType === "asc" ? 1 : -1,
     };
+    const cacheKey = `videos:${pageNum}:${limitNum}:${query || "all"}:${sortBy}:${sortType}:${userId || "all"}`;
+    const cachedData = await client.json.get(cacheKey);
+
+    if (cachedData) {
+        return res.status(200).json(
+            {
+                ...cachedData,
+                source: "redis"
+            });
+    }
 
     const videos = await Video.aggregate([
         { $match: matchStage },
@@ -80,6 +91,20 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const totalVideos = await Video.countDocuments(matchStage);
     const totalPages = Math.ceil(totalVideos / limitNum);
 
+
+    await client.json.set(
+        cacheKey,
+        "$",
+        {
+            success: true,
+            totalVideos,
+            totalPages,
+            currentPage: pageNum,
+            videos
+        }
+    );
+
+    await client.expire(cacheKey, 600);
     return res.status(200).json({
         success: true,
         totalVideos,
@@ -134,6 +159,9 @@ const publishVideo = asyncHandler(async (req, res) => {
         if (!video) {
             throw new ApiError(500, "Something went wrong uploading the video")
 
+        }
+        if (video) {
+            client.del("videos:1:10:all:createdAt:desc:all");
         }
 
         return res
