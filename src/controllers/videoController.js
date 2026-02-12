@@ -10,14 +10,14 @@ import mongoose from "mongoose"
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const {
-        page = 1,
-        limit = 10,
+        page ,
+        limit ,
         query,
         sortBy = "createdAt",
         sortType = "desc",
         userId
     } = req.query;
-
+    
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
@@ -90,7 +90,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     const totalVideos = await Video.countDocuments(matchStage);
     const totalPages = Math.ceil(totalVideos / limitNum);
-
 
     await client.json.set(
         cacheKey,
