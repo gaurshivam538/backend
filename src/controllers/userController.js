@@ -10,6 +10,7 @@ import NodeCache from "node-cache";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
 import oauth2Client from "../utils/googleConfig.js"
+
 const registerUser = asyncHandler(async (req, res) => {
     //This is the algorithm ofthe code
     // get user details from frontend
