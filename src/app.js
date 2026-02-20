@@ -34,6 +34,7 @@ import PlaylistRouter from "./routes/playlistRouter.js"
 import SubscriptionRouter from "./routes/subscriptionRouter.js"
 import DashboardRouter from "./routes/dashboardRouter.js"
 import SearchbarRouter from "./routes/searchbarRouter.js"
+import NotificationRouter from "./routes/notification.route.js"
 import client from './redis.js';
 //router declaration
 // app.get("/", async (req, res) => {
@@ -61,6 +62,7 @@ app.use("/api/v1/users", PlaylistRouter);
 app.use("/api/v1/users", SubscriptionRouter);
 app.use("/api/v1/users", DashboardRouter);
 app.use("/api/v1/users", SearchbarRouter);
+app.use("/api/v1/users",NotificationRouter);
 
 
 export {app};

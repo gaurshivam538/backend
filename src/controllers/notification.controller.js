@@ -4,17 +4,43 @@ import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Subscription } from "../models/subscriber.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+
+const getNotificationCount = asyncHandler(async(req, res) => {
+    const userId = req?.user?._id;
+    const {id} = req.params;
+
+     if (userId.toString() !== id.toString()) {
+        throw new ApiError(404, "Please take a corect userId")
+    }
+
+    const { type, entityType } = req.query;
+
+     const unreadCount = await Notification.countDocuments({
+        receiver: userId,
+        type: type,
+        isRead: false,
+        entityType: entityType
+    });
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200, {
+                unreadCount: Number(unreadCount)}, "Unread count is successfully fetchd"
+        )
+    );
+});
 
 const getNotification = asyncHandler(async (req, res, next) => {
     const userId = req?.user?._id;
-    const id = req?.params;
+    const {id} = req.params;
 
     if (userId.toString() !== id.toString()) {
         throw new ApiError(404, "Please take a corect userId")
     }
 
-    const { type, entityType } = req.body;
-    const { page = 1, limit = 4 } = req.query;
+    const { type, entityType, page = 1, limit = 2 } = req.query;
     const skip = (page - 1) * limit;
 
     if (!userId) {
@@ -53,19 +79,19 @@ const getNotification = asyncHandler(async (req, res, next) => {
 const addNotification = asyncHandler(async (req, res) => {
     const sender = req.user?._id;
     const { type, entityId, entityType, title, message, thumbnail, senderAvatar } = req.body;
-    const id = req?.params;
+    const {id} = req.params;
 
     if (sender.toString() !== id.toString()) {
         throw new ApiError(404, "Please take a corect userId")
     }
 
-    if (!title || !message) {
-        throw new ApiError(404, "Please take the one more field")
-    }
+    // if (!title || !message) {
+    //     throw new ApiError(404, "Please take the one more field")
+    // }
 
     const receiverIds = await Subscription.find({
         channel: sender
-    }).select(" -_id, subscriber");
+    }).select(" -_id subscriber");
 
     if (receiverIds.length > 0) {
         const notifications = await Promise.all(
@@ -96,4 +122,5 @@ const addNotification = asyncHandler(async (req, res) => {
 export {
     getNotification,
     addNotification,
+    getNotificationCount
 }
