@@ -5,6 +5,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Subscription } from "../models/subscriber.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { getIo } from "../../socketserver.js";
 
 const getNotificationCount = asyncHandler(async(req, res) => {
     const userId = req?.user?._id;
@@ -88,6 +89,7 @@ const addNotification = asyncHandler(async (req, res) => {
     // if (!title || !message) {
     //     throw new ApiError(404, "Please take the one more field")
     // }
+    const io = getIo();
 
     const receiverIds = await Subscription.find({
         channel: sender
@@ -110,6 +112,23 @@ const addNotification = asyncHandler(async (req, res) => {
                 })
             )
         )
+
+        receiverIds.map((subscriber) =>(
+            io.to(`notification_${subscriber.subscriber}`).emit("notification:newVideo",
+                {
+                    message:`${req?.user?.username} ne ak nayi video upload ke `,
+                    sender:sender,
+                    type:String(type).toUpperCase(),
+                    entityId:entityId,
+                    entityType:entityType,
+                    title: title || "",
+                    // message: message || "",
+                    thumbnail: thumbnail || "",
+                    senderAvatar: senderAvatar || "",
+                    isRead: false,
+                }
+            )
+        ));
 
         return res.status(201)
         .json(

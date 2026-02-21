@@ -38,7 +38,7 @@ const initSocket = (server) => {
 
         //join user-specific room
          socket.join(`user_${socket.socketUseruserId}`);
-
+         socket.join(`notification_${socket.socketUseruserId}`);
         socket.on("join-video", (videoId) => {
             socket.join(`video_${videoId}`);
             console.log(`Joined room video_${videoId}`);

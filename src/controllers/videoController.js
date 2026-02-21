@@ -219,19 +219,7 @@ const getVideoById = asyncHandler(async (req, res) => {
             
             // }
 
-            if (signal.toString() === "notificationVideo") {
-                console.log("hai");
-                
-                await Notification.updateMany(
-                    {
-                        receiver: req.user._id,
-                        entityId: videoId,
-                        entityType: "VIDEO",
-                        isRead: false
-                    },
-                    { $set: { isRead: true } }
-                );
-            }
+            
         }
 
         const updatedVideo = await Video.aggregate([
@@ -343,6 +331,19 @@ const getVideoById = asyncHandler(async (req, res) => {
         if (!updatedVideo) {
             throw new ApiError(500, "Updated video can not be found")
         }
+        if (signal.toString() === "notificationVideo") {
+                console.log("hai");
+                
+                await Notification.updateMany(
+                    {
+                        receiver: req.user._id,
+                        entityId: videoId,
+                        entityType: "VIDEO",
+                        isRead: false
+                    },
+                    { $set: { isRead: true } }
+                );
+            }
 
         return res
             .status(200)
