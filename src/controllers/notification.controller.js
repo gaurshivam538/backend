@@ -13,7 +13,7 @@ const getNotificationCount = asyncHandler(async(req, res) => {
      if (userId.toString() !== id.toString()) {
         throw new ApiError(404, "Please take a corect userId")
     }
-
+    
     const { type, entityType } = req.query;
 
      const unreadCount = await Notification.countDocuments({
@@ -97,7 +97,7 @@ const addNotification = asyncHandler(async (req, res) => {
         const notifications = await Promise.all(
             receiverIds.map((subscriber) =>
                 Notification.create({
-                    receiver: subscriber,
+                    receiver: subscriber.subscriber,
                     sender: sender,
                     type: String(type).toUpperCase(),
                     entityId: entityId,

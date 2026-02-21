@@ -61,10 +61,21 @@ const notificationSchema = new Schema(
         createdAt: {
             type: Date,
             default: Date.now,
-            expires: 60 * 2
+            expires: 60 * 60 * 24
         },
     },
 );
 
 
+
 export const Notification = mongoose.model("Notification", notificationSchema);
+
+//  const checkNotificationIndexes = async () => {
+//   const indexes = await Notification.collection.indexes();
+//   console.log("Notification indexes:", indexes);
+// };
+
+// checkNotificationIndexes()
+
+//  await Notification.collection.dropIndex("createdAt_1");
+// console.log("Old TTL index removed");

@@ -1,3 +1,4 @@
+import { Notification } from "../models/notification.model.js";
 import { Subscription } from "../models/subscriber.model.js";
 import { Video } from "../models/video.model.js";
 import { View } from "../models/views.model.js";
@@ -10,14 +11,15 @@ import mongoose from "mongoose"
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const {
-        page ,
-        limit ,
+        page,
+        limit,
         query,
         sortBy = "createdAt",
         sortType = "desc",
         userId
     } = req.query;
-    
+
+
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
 
@@ -179,6 +181,8 @@ const publishVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req?.params;
+    const { signal } = req.query;
+    console.log(signal);
 
     try {
 
@@ -210,6 +214,24 @@ const getVideoById = asyncHandler(async (req, res) => {
                 $inc: { views: 1 }
             }
             )
+
+            // if (signal.toString() === "randomVideo") {
+            
+            // }
+
+            if (signal.toString() === "notificationVideo") {
+                console.log("hai");
+                
+                await Notification.updateMany(
+                    {
+                        receiver: req.user._id,
+                        entityId: videoId,
+                        entityType: "VIDEO",
+                        isRead: false
+                    },
+                    { $set: { isRead: true } }
+                );
+            }
         }
 
         const updatedVideo = await Video.aggregate([
