@@ -205,7 +205,7 @@ const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
             const options = {
                 httpOnly: true,
                 secure: true,          // MUST in production
-                sameSite: "none", 
+                sameSite: "none",
                 maxAge: 7 * 24 * 60 * 60 * 1000,     // MUST for cross-origin
             };
 
@@ -272,7 +272,7 @@ const googleLogin = asyncHandler(async (req, res) => {
             const options = {
                 httpOnly: true,
                 secure: true,          // MUST in production
-                sameSite: "none",  
+                sameSite: "none",
                 maxAge: 7 * 24 * 60 * 60 * 1000,    // MUST for cross-origin
             };
 
@@ -280,7 +280,11 @@ const googleLogin = asyncHandler(async (req, res) => {
                 .cookie("accessToken", accessToken, options)
                 .cookie("refreshToken", refreshToken, options)
                 .json(
-                    new ApiResponse(200, loggedInUser, "User is Successfully loggedIn")
+                    new ApiResponse(200, {
+                        loggedInUser,
+                        accessToken,
+                        refreshToken
+                    }, "User is Successfully loggedIn")
                 )
 
         }
@@ -334,7 +338,7 @@ const loginUser = asyncHandler(async (req, res) => {
         const options = {
             httpOnly: true,
             secure: true,          // MUST in production
-            sameSite: "none",  
+            sameSite: "none",
             maxAge: 7 * 24 * 60 * 60 * 1000,    // MUST for cross-origin
         };
 
@@ -868,7 +872,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
     const options = {
         httpOnly: true,
         secure: true,          // MUST in production
-        sameSite: "none", 
+        sameSite: "none",
         maxAge: 7 * 24 * 60 * 60 * 1000,      // MUST for cross-origin
     };
 
