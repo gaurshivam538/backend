@@ -278,8 +278,7 @@ const googleLogin = asyncHandler(async (req, res) => {
 
             res.status(200)
                 .cookie("accessToken", accessToken, options)
-                .cookie("refreshToken", refreshToken, options)
-                .redirect("https://youtube-frontend-clone-zeta.vercel.app")
+                .cookie("refreshToken", refreshToken, options)           
                 .json(
                     new ApiResponse(200, {
                         loggedInUser,
