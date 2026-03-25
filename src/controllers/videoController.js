@@ -11,8 +11,8 @@ import mongoose from "mongoose";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const {
-    page,
-    limit,
+    page=1,
+    limit=3,
     query,
     sortBy = "createdAt",
     sortType = "desc",
