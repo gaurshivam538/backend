@@ -205,7 +205,8 @@ const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
             const options = {
                 httpOnly: true,
                 secure: true,          // MUST in production
-                sameSite: "none",      // MUST for cross-origin
+                sameSite: "none", 
+                maxAge: 7 * 24 * 60 * 60 * 1000,     // MUST for cross-origin
             };
 
             res.status(200)
@@ -271,7 +272,8 @@ const googleLogin = asyncHandler(async (req, res) => {
             const options = {
                 httpOnly: true,
                 secure: true,          // MUST in production
-                sameSite: "none",      // MUST for cross-origin
+                sameSite: "none",  
+                maxAge: 7 * 24 * 60 * 60 * 1000,    // MUST for cross-origin
             };
 
             res.status(200)
@@ -332,7 +334,8 @@ const loginUser = asyncHandler(async (req, res) => {
         const options = {
             httpOnly: true,
             secure: true,          // MUST in production
-            sameSite: "none",      // MUST for cross-origin
+            sameSite: "none",  
+            maxAge: 7 * 24 * 60 * 60 * 1000,    // MUST for cross-origin
         };
 
         res
@@ -445,7 +448,8 @@ const refreshAccessToken = async (req, res) => {
         const options = {
             httpOnly: true,
             secure: true,          // MUST in production
-            sameSite: "none",      // MUST for cross-origin
+            sameSite: "none",
+            maxAge: 7 * 24 * 60 * 60 * 1000,      // MUST for cross-origin
         };
 
         res
