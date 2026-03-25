@@ -201,10 +201,12 @@ const afterRedirectForSignupLogin = asyncHandler(async (req, res) => {
 
             const loggedInUser = await User.findById(user._id).select(" -refreshToken");
 
+
             const options = {
                 httpOnly: true,
-                secure: false,
-            }
+                secure: true,          // MUST in production
+                sameSite: "none",      // MUST for cross-origin
+            };
 
             res.status(200)
                 .cookie("accessToken", accessToken, options)
@@ -410,24 +412,24 @@ const refreshAccessToken = async (req, res) => {
 
         if (!incomingRefreshToken) {
             return res.status(402)
-            .json(
-                new ApiResponse(402, "Refresh Token can not provide please login")
-            )
-           
+                .json(
+                    new ApiResponse(402, "Refresh Token can not provide please login")
+                )
+
         }
 
         const decodedRefreshToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
         if (!decodedRefreshToken) {
-           return res.status(402)
-            .json(
-                new ApiResponse(402, "Refresh Token Expiry please Login and create new token")
-            )
+            return res.status(402)
+                .json(
+                    new ApiResponse(402, "Refresh Token Expiry please Login and create new token")
+                )
         }
 
-          const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(decodedRefreshToken?._id);
+        const { accessToken, refreshToken } = await generateAccessTokenAndRefresh(decodedRefreshToken?._id);
 
-         await User.findByIdAndUpdate(decodedRefreshToken?._id,
+        await User.findByIdAndUpdate(decodedRefreshToken?._id,
             {
                 $set: {
                     refreshToken: refreshToken,
@@ -438,20 +440,21 @@ const refreshAccessToken = async (req, res) => {
             }
         ).select(" -password -refreshToken");
 
-      
+
 
         const options = {
             httpOnly: true,
-            secure: false,
-            // sameSite: "lax"
-        }
+            secure: true,          // MUST in production
+            sameSite: "none",      // MUST for cross-origin
+        };
+
         res
             .status(200)
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", refreshToken, options)
             .json(
 
-                new ApiResponse(201,  [], true, "Access Token is created SuccessFully")
+                new ApiResponse(201, [], true, "Access Token is created SuccessFully")
             )
     } catch (error) {
         throw new ApiError(401, error?.message, "After Expire the AccessToken in not generate again")
@@ -796,10 +799,10 @@ const forgotPassword = async (req, res) => {
 
         if (!user) {
             // throw new ApiError(404, "User not found. Please sign up first.");
-           return res.status(404)
-           .json(
-              new ApiResponse(404,"User not found. Please sign up first." )
-           )
+            return res.status(404)
+                .json(
+                    new ApiResponse(404, "User not found. Please sign up first.")
+                )
         }
 
         const otp = Math.floor(100000 + Math.random() * 900000);
@@ -857,10 +860,12 @@ const verifyOtp = asyncHandler(async (req, res) => {
         }
     )
 
+
     const options = {
         httpOnly: true,
-        secure: false
-    }
+        secure: true,          // MUST in production
+        sameSite: "none",      // MUST for cross-origin
+    };
 
     return res
         .status(200)
