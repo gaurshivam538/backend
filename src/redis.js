@@ -23,3 +23,4 @@ const client = new Redis({
 
 // export { connectRedis };
 export default client;
+
