@@ -868,7 +868,8 @@ const verifyOtp = asyncHandler(async (req, res) => {
     const options = {
         httpOnly: true,
         secure: true,          // MUST in production
-        sameSite: "none",      // MUST for cross-origin
+        sameSite: "none", 
+        maxAge: 7 * 24 * 60 * 60 * 1000,      // MUST for cross-origin
     };
 
     return res
