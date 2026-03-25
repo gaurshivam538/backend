@@ -268,8 +268,9 @@ const googleLogin = asyncHandler(async (req, res) => {
 
             const options = {
                 httpOnly: true,
-                secure: false,
-            }
+                secure: true,          // MUST in production
+                sameSite: "none",      // MUST for cross-origin
+            };
 
             res.status(200)
                 .cookie("accessToken", accessToken, options)
@@ -320,12 +321,17 @@ const loginUser = asyncHandler(async (req, res) => {
 
         const loggedInUser = await User.findById(user._id).select(" -password -refreshToken")
 
-        const options =
-        {
+        // const options =
+        // {
+        //     httpOnly: true,
+        //     secure: false,   // localhost
+        //     // sameSite: "lax"  // SAME SITE via proxy
+        // }
+        const options = {
             httpOnly: true,
-            secure: false,   // localhost
-            // sameSite: "lax"  // SAME SITE via proxy
-        }
+            secure: true,          // MUST in production
+            sameSite: "none",      // MUST for cross-origin
+        };
 
         res
             .status(200)
@@ -366,11 +372,16 @@ const logoutUser = asyncHandler(async (req, res, next) => {
         }
     )
 
+    // const options = {
+    //     httpOnly: true,
+    //     secure: false,
+    //     sameSite: "lax"
+    // }
     const options = {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax"
-    }
+        secure: true,          // MUST in production
+        sameSite: "none",      // MUST for cross-origin
+    };
 
     return res
         .status(200)
