@@ -280,11 +280,13 @@ const googleLogin = asyncHandler(async (req, res) => {
                 .cookie("accessToken", accessToken, options)
                 .cookie("refreshToken", refreshToken, options)           
                 .json(
-                    new ApiResponse(200, {
+                    new ApiResponse(200, 
+                        // {
                         loggedInUser,
-                        accessToken,
-                        refreshToken
-                    }, "User is Successfully loggedIn")
+                    //     accessToken,
+                    //     refreshToken
+                    // }
+                    "User is Successfully loggedIn")
                 )
 
         }
